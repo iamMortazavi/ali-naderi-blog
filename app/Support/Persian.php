@@ -6,9 +6,17 @@ final class Persian
 {
     private const DIGITS = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
 
+    private const LATIN = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
     public static function digits(string|int $text): string
     {
-        return str_replace(range(0, 9), self::DIGITS, (string) $text);
+        return str_replace(self::LATIN, self::DIGITS, (string) $text);
+    }
+
+    /** Persian digits on Persian pages, unchanged elsewhere. */
+    public static function forLocale(string|int $text, string $locale): string
+    {
+        return $locale === 'fa' ? self::digits($text) : (string) $text;
     }
 
     /**
@@ -23,7 +31,7 @@ final class Persian
             "\u{200C}" => ' ', "\u{200E}" => '', "\u{200F}" => '',
         ]);
         $text = preg_replace('/[\x{064B}-\x{065F}\x{0670}]/u', '', $text);
-        $text = str_replace(self::DIGITS, range(0, 9), $text);
+        $text = str_replace(self::DIGITS, self::LATIN, $text);
 
         return trim(preg_replace('/\s+/u', ' ', $text));
     }

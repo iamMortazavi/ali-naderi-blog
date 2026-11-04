@@ -40,11 +40,16 @@ return [
 
         'public' => [
             'driver' => 'local',
-            // Inside public/ so cPanel hosts need no storage symlink. URLs are site-relative.
-            'root' => public_path('uploads'),
+            // Uploaded covers, audio and note attachments. Inside the web root so cPanel hosts
+            // need no storage symlink; URLs are site-relative. When the site is served from
+            // public_html instead of blog/public, set UPLOADS_PATH=/home/USER/public_html/uploads.
+            // public/uploads/.htaccess turns off PHP and blocks HTML/SVG in this folder.
+            'root' => env('UPLOADS_PATH', public_path('uploads')),
             'url' => '/uploads',
             'visibility' => 'public',
-            'throw' => false,
+            // Fail loudly: a write that cannot happen (full disk, wrong permissions) must not
+            // leave a post pointing at a file that does not exist.
+            'throw' => true,
             'report' => false,
         ],
 
@@ -68,14 +73,11 @@ return [
     | Symbolic Links
     |--------------------------------------------------------------------------
     |
-    | Here you may configure the symbolic links that will be created when the
-    | `storage:link` Artisan command is executed. The array keys should be
-    | the locations of the links and the values should be their targets.
+    | None: uploads are stored directly under public/uploads (see the "public"
+    | disk above), so `php artisan storage:link` is not needed on cPanel.
     |
     */
 
-    'links' => [
-        public_path('storage') => storage_path('app/public'),
-    ],
+    'links' => [],
 
 ];

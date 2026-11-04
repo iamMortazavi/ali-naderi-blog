@@ -1,0 +1,36 @@
+# Uploaded files: covers, images, audio, video and PDFs from the admin panel and from
+# Obsidian notes (see config/filesystems.php, "public" disk). Nothing here may ever run as
+# code or be served as an active document. Keep this file when copying public/ to
+# public_html; scripts/package.sh ships it with every release.
+
+Options -Indexes
+
+# 1) Never hand these files to PHP or CGI, whatever handler cPanel/MultiPHP added above.
+<IfModule mod_mime.c>
+    RemoveHandler .php .php3 .php4 .php5 .php7 .php8 .phtml .phar .pht .phps .cgi .pl .py .sh
+    RemoveType .php .php3 .php4 .php5 .php7 .php8 .phtml .phar .pht .phps .cgi .pl .py .sh
+</IfModule>
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+
+# 2) Refuse scripts (also as a double extension, e.g. shell.php.jpg) and anything a browser
+#    would render as an active document: HTML and SVG can carry JavaScript.
+<FilesMatch "(?i)\.(php\d?|phtml|phar|pht|phps|cgi|pl|py|sh)(\.|$)">
+    Require all denied
+</FilesMatch>
+<FilesMatch "(?i)\.(html?|xhtml|shtml|svgz?|xml|js|mjs)$">
+    Require all denied
+</FilesMatch>
+
+# 3) Media: never sniffed as another type; cached for 30 days. Not "immutable": a re-imported
+#    note may replace an attachment under the same name.
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    <FilesMatch "(?i)\.(png|jpe?g|webp|avif|gif|mp3|m4a|ogg|wav|mp4|webm|pdf)$">
+        Header set Cache-Control "public, max-age=2592000"
+    </FilesMatch>
+</IfModule>

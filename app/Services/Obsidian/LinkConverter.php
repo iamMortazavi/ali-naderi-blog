@@ -5,6 +5,7 @@ namespace App\Services\Obsidian;
 use App\Services\Content\MarkdownRenderer;
 use App\Services\Content\Prose;
 use App\Support\Locales;
+use App\Support\Url;
 
 /**
  * Turns Obsidian links into links the site understands, for one note:
@@ -16,7 +17,10 @@ use App\Support\Locales;
  */
 class LinkConverter
 {
-    private const MEDIA = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'avif', 'svg', 'mp3', 'm4a', 'ogg', 'oga', 'wav', 'mp4', 'webm', 'pdf'];
+    public const MEDIA = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'avif', 'svg', 'mp3', 'm4a', 'ogg', 'oga', 'wav', 'mp4', 'webm', 'pdf'];
+
+    /** File types that may be copied to the public disk. SVG can carry scripts, so it is not one of them. */
+    public const ATTACHABLE = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'avif', 'mp3', 'm4a', 'ogg', 'oga', 'wav', 'mp4', 'webm', 'pdf'];
 
     /** @var array<string,string> name in the post folder → vault path */
     public array $attachments = [];
@@ -49,11 +53,26 @@ class LinkConverter
         });
     }
 
-    /** Copy an attachment next to the post; returns its file name there, an https address, or null. */
+    /**
+     * Register an attachment to be copied next to the post; returns its file name there, the web
+     * address itself for http(s) references, or null (with an error) when it cannot be used.
+     */
     public function attach(string $ref): ?string
     {
-        if (preg_match('#^https?://#', $ref)) {
+        $ref = trim($ref);
+        if (Url::isAbsolute($ref)) {
             return $ref;
+        }
+        $ext = strtolower(pathinfo($ref, PATHINFO_EXTENSION));
+        if (! in_array($ext, self::ATTACHABLE, true)) {
+            $this->errors[] = 'file type not allowed: '.basename($ref).' (allowed: '.implode(', ', self::ATTACHABLE).')';
+
+            return null;
+        }
+        if ($this->escapesVault($ref)) {
+            $this->errors[] = "attachment path points outside the vault: {$ref}";
+
+            return null;
         }
         $source = $this->findFile($ref);
         if (! $source) {
@@ -73,6 +92,10 @@ class LinkConverter
         $target = trim($target);
         $text = $text !== '' ? $text : null;
         if ($target === '') {
+            if (str_starts_with($anchor, '#^')) {
+                return $text ?? ''; // block references have no address on the site
+            }
+
             return $anchor !== '' ? '['.($text ?? substr($anchor, 1)).'](#'.MarkdownRenderer::anchor(substr($anchor, 1)).')' : $all;
         }
         if ($bang) {
@@ -111,7 +134,7 @@ class LinkConverter
     private function embed(string $target, ?string $text): string
     {
         $ext = strtolower(pathinfo($target, PATHINFO_EXTENSION));
-        if (! in_array($ext, self::MEDIA, true)) {
+        if ($ext === '' || $ext === 'md') {
             $this->errors[] = "embedding a note is not supported: ![[{$target}]]. Use a link [[{$target}]] instead";
 
             return '';
@@ -165,8 +188,12 @@ class LinkConverter
     {
         $ref = trim($ref);
         if (str_contains($ref, '/')) {
-            foreach ([dirname($this->note->path), ''] as $base) {
-                $candidate = $this->normalizePath(ltrim($base.'/'.$ref, '/'));
+            $noteDir = dirname($this->note->path);
+            foreach ([$noteDir === '.' ? '' : $noteDir, ''] as $base) {
+                $candidate = $this->normalizePath(ltrim($base.'/'.ltrim($ref, '/'), '/'));
+                if ($candidate === null) {
+                    continue;
+                }
                 foreach ($this->files[mb_strtolower(basename($candidate))] ?? [] as $path) {
                     if ($path === $candidate) {
                         return $path;
@@ -184,11 +211,26 @@ class LinkConverter
         return $matches[0] ?? null;
     }
 
-    private function normalizePath(string $path): string
+    /** A relative path whose ".." steps leave the vault (seen from the note's folder). */
+    private function escapesVault(string $ref): bool
+    {
+        if (! preg_match('#(^|/)\.\.(/|$)#', $ref)) {
+            return false;
+        }
+        $base = dirname($this->note->path);
+
+        return $this->normalizePath(ltrim(($base === '.' ? '' : $base).'/'.ltrim($ref, '/'), '/')) === null;
+    }
+
+    /** "a/./b/../c" → "a/c"; null when ".." climbs above the vault root. */
+    private function normalizePath(string $path): ?string
     {
         $parts = [];
         foreach (explode('/', $path) as $part) {
             if ($part === '..') {
+                if ($parts === []) {
+                    return null;
+                }
                 array_pop($parts);
             } elseif ($part !== '.' && $part !== '') {
                 $parts[] = $part;

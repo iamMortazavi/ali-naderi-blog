@@ -17,8 +17,8 @@
   --card-shadow-hover: none;
   --list-gap: 0;
   --info: #0f766e;
-  --tip: #4d7c0f;
-  --warning: #b45309;
+  --tip: #3f6212;
+  --warning: #92400e;
   --danger: #b91c1c;
   --question: #7c3aed;
 }
@@ -26,6 +26,7 @@
 [data-look="ink"] .post-card:hover .post-card-title a { color: var(--accent); }
 [data-look="ink"] .profile { text-align: center; padding-block: 56px 28px; border-bottom: 3px double var(--border); }
 [data-look="ink"] .social { justify-content: center; }
+[data-look="ink"]:not([data-theme="dark"]) .callout-quote .callout-title { color: #665e54; }
 [data-look="ink"][data-theme="dark"] {
   --bg: #1b1915;
   --surface: #26231d;

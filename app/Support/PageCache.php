@@ -2,23 +2,37 @@
 
 namespace App\Support;
 
+use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Cache;
 
 /**
- * Whole-page HTML cache for visitors. Every change to posts, pages, tags or settings
- * moves to a new cache generation, so old pages are never served after an edit.
+ * Whole-page HTML cache for visitors, kept in its own file store ('pages' in config/cache.php).
+ * Every change to posts, pages, tags or settings clears that store, so old pages are never
+ * served after an edit and old copies never pile up on disk.
  */
 final class PageCache
 {
-    private const VERSION_KEY = 'page-cache-version';
+    public const STORE = 'pages';
 
-    public static function key(string $url): string
+    /** How long a browser or proxy may reuse a cached page, in seconds. */
+    public const MAX_AGE = 300;
+
+    public static function store(): Repository
     {
-        return 'page:'.Cache::get(self::VERSION_KEY, 1).':'.sha1($url);
+        return Cache::store(self::STORE);
+    }
+
+    /**
+     * Key for one page: the site's own address (never the Host header the visitor sent),
+     * the decoded path and the list page number, if any.
+     */
+    public static function key(string $path, ?int $page = null): string
+    {
+        return 'page:'.sha1(SiteSettings::url().Url::path($path).($page !== null ? '?page='.$page : ''));
     }
 
     public static function flush(): void
     {
-        Cache::forever(self::VERSION_KEY, (int) Cache::get(self::VERSION_KEY, 1) + 1);
+        self::store()->flush();
     }
 }

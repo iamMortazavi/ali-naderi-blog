@@ -1,5 +1,5 @@
 /* Base styles shared by every look. Colours, fonts and shapes come from the variables
-   that each look in css/looks/ sets; this file only uses them. Logical properties
+   that each look (paper.css, ink.css) sets; this file only uses them. Logical properties
    (inline-start/end) keep one stylesheet working for both right-to-left and left-to-right. */
 
 :root {
@@ -35,7 +35,7 @@ a { color: var(--link); text-decoration-thickness: 1px; text-underline-offset: 3
 a:hover { color: var(--accent); }
 img, video, iframe { max-width: 100%; height: auto; }
 .icon { width: 1.1em; height: 1.1em; vertical-align: -0.18em; flex-shrink: 0; }
-.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .skip-link { position: absolute; inset-inline-start: 8px; top: -60px; padding: 8px 12px; background: var(--surface); border-radius: var(--radius); z-index: 10; }
 .skip-link:focus { top: 8px; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
@@ -81,6 +81,12 @@ img, video, iframe { max-width: 100%; height: auto; }
 .list-header { padding-block: 40px 8px; }
 .list-header h1 { margin: 0; font-size: clamp(24px, 4vw, 30px); }
 .list-count { color: var(--muted); margin: 4px 0 0; }
+.all-posts { margin: 0 0 40px; }
+.all-posts a { display: inline-block; padding: 8px 18px; border-radius: 999px; background: var(--surface); color: var(--text); text-decoration: none; }
+.all-posts a:hover { background: var(--accent); color: var(--on-accent); }
+.list-feed { margin: 6px 0 0; font-size: 14px; }
+.list-feed a { color: var(--muted); display: inline-flex; gap: 6px; align-items: center; text-decoration: none; }
+.list-feed a:hover { color: var(--accent); }
 .pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px 40px; }
 .pagination a { padding: 8px 18px; border-radius: 999px; background: var(--surface); color: var(--text); text-decoration: none; }
 .pagination .page-next { margin-inline-start: auto; }
@@ -125,6 +131,7 @@ h2:hover .heading-anchor, h3:hover .heading-anchor, h4:hover .heading-anchor { o
 .post-content ul, .post-content ol { padding-inline-start: 1.6em; }
 .post-content li + li { margin-top: .25em; }
 .post-content .footnotes { font-size: 15px; color: var(--muted); }
+:lang(fa) .footnotes ol { list-style-type: persian; }
 
 /* Code and math are always left-to-right, even inside Persian text */
 code, pre, kbd, .math-inline, .math-block { direction: ltr; unicode-bidi: isolate; }
@@ -134,7 +141,9 @@ pre code { font-family: inherit; }
 .post-content pre { font-family: var(--font-code); font-size: 14px; line-height: 1.65; padding: 16px 18px; margin: 1.5em 0; border-radius: var(--radius); overflow-x: auto; text-align: left; tab-size: 4; border: 1px solid var(--border); background: var(--code-bg); color: var(--text); white-space: pre; }
 .code-block pre { margin: 0; }
 .copy-code { position: absolute; top: 8px; right: 8px; padding: 2px 10px; font: inherit; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--muted); cursor: pointer; opacity: 0; transition: opacity .15s; }
-.code-block:hover .copy-code, .copy-code:focus { opacity: 1; }
+.code-block:hover .copy-code, .copy-code:focus-visible, .copy-code[data-copied] { opacity: 1; }
+@media (hover: none) { .copy-code { opacity: 1; } }
+.copy-code[data-copied], .copy-link[data-copied] { color: var(--tip); border-color: var(--tip); }
 .math-block { overflow-x: auto; padding: 8px 0; margin: 1.2em 0; text-align: center; }
 .math:not(.math-rendered) { font-family: var(--font-code); font-size: .9em; color: var(--muted); }
 math { font-size: 1.08em; }
@@ -186,8 +195,9 @@ summary.callout-title { cursor: pointer; }
 .archive-list li { display: flex; justify-content: space-between; gap: 16px; padding: 6px 0; border-bottom: 1px dashed var(--border); }
 .archive-list time { color: var(--muted); font-size: 14px; white-space: nowrap; }
 .search-form { position: relative; margin: 16px 0; }
-.search-form input { width: 100%; padding: 14px 18px; padding-inline-start: 46px; font: inherit; font-size: 17px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 999px; }
-.search-form input:focus { outline: none; border-color: var(--accent); }
+.search-form input { width: 100%; padding: 14px 18px; padding-inline-start: 46px; padding-inline-end: 120px; font: inherit; font-size: 17px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 999px; }
+.search-form input:focus { border-color: var(--accent); }
+.search-form input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 999px; }
 .search-icon { position: absolute; inset-inline-start: 16px; top: 50%; transform: translateY(-50%); color: var(--muted); display: flex; }
 .search-hint { color: var(--muted); }
 .search-form button { position: absolute; inset-inline-end: 6px; top: 50%; transform: translateY(-50%); padding: 8px 16px; border: 0; border-radius: 999px; background: var(--accent); color: var(--on-accent); font: inherit; cursor: pointer; }
@@ -207,6 +217,7 @@ summary.callout-title { cursor: pointer; }
   :root { --gap: 16px; }
   body { font-size: 16px; }
   .post-content { font-size: 16.5px; }
+  .post-content h2, .post-content h3, .post-content h4 { scroll-margin-top: 110px; }
   .post-card-title { font-size: 19px; }
   .post-nav { grid-template-columns: 1fr; }
   .post-nav-older { grid-column: 1; }

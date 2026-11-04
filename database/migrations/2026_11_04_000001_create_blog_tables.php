@@ -33,6 +33,7 @@ return new class extends Migration
             $table->string('slug', 80);
             $table->string('title', 160);
             $table->string('description', 300)->nullable();
+            $table->string('excerpt', 400)->nullable();     // start of the text, for lists without a description
             $table->longText('body');                       // Markdown, as written
             $table->longText('body_html')->nullable();      // rendered on save
             $table->longText('search_text')->nullable();    // normalized plain text for Persian-aware search
@@ -96,13 +97,17 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        // The memory of what was sent to the channel: one message per post, ever.
+        // The memory of what was sent to the channel: one row per post, ever (unique post_id).
+        // The row is claimed with status "sending" before the API call, so two senders cannot both send.
         Schema::create('telegram_messages', function (Blueprint $table) {
             $table->id();
             $table->foreignId('post_id')->unique()->constrained()->cascadeOnDelete();
             $table->string('chat_id', 64);
-            $table->bigInteger('message_id')->nullable(); // null = marked as sent without sending (baseline)
-            $table->timestamp('sent_at');
+            $table->string('status', 20)->default('sending'); // App\Enums\TelegramStatus
+            $table->bigInteger('message_id')->nullable();
+            $table->unsignedTinyInteger('attempts')->default(0);
+            $table->string('last_error', 500)->nullable();
+            $table->timestamp('sent_at')->nullable();
             $table->timestamps();
         });
 
@@ -119,8 +124,8 @@ return new class extends Migration
         // History of Obsidian imports, shown in the panel.
         Schema::create('sync_runs', function (Blueprint $table) {
             $table->id();
-            $table->string('source', 20);                 // local | github
-            $table->string('status', 20)->default('running'); // running | success | failed
+            $table->string('source', 20);                     // App\Enums\SyncDriver
+            $table->string('status', 20)->default('running'); // App\Enums\SyncStatus
             $table->unsignedInteger('created_count')->default(0);
             $table->unsignedInteger('updated_count')->default(0);
             $table->unsignedInteger('unpublished_count')->default(0);
@@ -128,7 +133,7 @@ return new class extends Migration
             $table->unsignedInteger('skipped_count')->default(0);  // private notes (no publish: true)
             $table->json('messages')->nullable();         // [{level, file, text}]
             $table->string('commit', 64)->nullable();
-            $table->timestamp('started_at');
+            $table->timestamp('started_at')->nullable(); // nullable: MariaDB < 10.10 would add ON UPDATE
             $table->timestamp('finished_at')->nullable();
             $table->timestamps();
         });

@@ -9,10 +9,17 @@ insert_final_newline = true
 trim_trailing_whitespace = true
 
 [*.md]
+# Two trailing spaces are a line break in Markdown.
 trim_trailing_whitespace = false
 
 [*.{yml,yaml}]
 indent_size = 2
+
+[*.json]
+indent_size = 4
+
+[.htaccess]
+indent_size = 4
 
 [{compose,docker-compose}.{yml,yaml}]
 indent_size = 4

@@ -13,6 +13,21 @@
     RewriteCond %{HTTP:x-xsrf-token} .
     RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
 
+    # --- Blog: always HTTPS ---
+    # Skipped for local development (localhost, 127.0.0.1), behind a proxy that already
+    # terminated TLS (X-Forwarded-Proto: https, e.g. Cloudflare), and for /.well-known/
+    # so cPanel AutoSSL can validate the domain before a certificate exists.
+    # Only on the first pass: after "index.php" below, REQUEST_URI is /index.php.
+    RewriteCond %{ENV:REDIRECT_STATUS} ^$
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+    RewriteCond %{HTTP_HOST} !^(localhost|127\.0\.0\.1)(:\d+)?$ [NC]
+    RewriteCond %{REQUEST_URI} !^/\.well-known/
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301,NE]
+
+    # --- Blog: hide dot-files (.env copies, .git) except /.well-known/ ---
+    RewriteRule (^|/)\.(?!well-known/) - [F,L]
+
     # Redirect Trailing Slashes If Not A Folder...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_URI} (.+)/$
@@ -30,7 +45,10 @@
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
     Header always set X-Frame-Options "SAMEORIGIN"
     Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
-    <FilesMatch "\.(woff2|svg|png|jpe?g|webp|gif|mp3|m4a|mp4|css|js)$">
+    # HSTS only on HTTPS responses (browsers ignore it over HTTP anyway). One year, this host
+    # only: subdomains such as cpanel.example.com may not have a certificate.
+    Header always set Strict-Transport-Security "max-age=31536000" "expr=%{HTTPS} == 'on'"
+    <FilesMatch "\.(woff2|svg|png|jpe?g|webp|avif|gif|mp3|m4a|ogg|wav|mp4|webm|css|js)$">
         Header set Cache-Control "public, max-age=2592000"
     </FilesMatch>
 </IfModule>
@@ -41,4 +59,7 @@
 
 <IfModule mod_mime.c>
     AddType font/woff2 .woff2
+    AddType image/avif .avif
+    AddType image/webp .webp
+    AddType audio/mp4 .m4a
 </IfModule>

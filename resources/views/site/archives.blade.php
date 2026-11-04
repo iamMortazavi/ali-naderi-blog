@@ -1,13 +1,11 @@
 @extends('site.layout')
-@php
-    use App\Support\Dates;
-    use App\Support\Persian;
-@endphp
+@use('App\Support\Dates')
+@use('App\Support\Persian')
 @section('main')
 <div class="wrap">
   <header class="list-header">
     <h1>{{ __('site.archives') }}</h1>
-    <p class="list-count">{{ $locale === 'fa' ? Persian::digits(__('site.postsCount', ['count' => $count])) : __('site.postsCount', ['count' => $count]) }}</p>
+    <p class="list-count">{{ trans_choice('site.postsCount', $count, ['count' => Persian::forLocale($count, $locale)]) }}</p>
   </header>
   <div class="archive">
     @foreach ($groups as $year => $months)

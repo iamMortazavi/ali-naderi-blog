@@ -4,8 +4,9 @@ namespace App\Filament\Resources\Posts\Tables;
 
 use App\Enums\PostSource;
 use App\Enums\PostStatus;
+use App\Filament\Resources\Posts\Actions\TelegramActions;
+use App\Filament\Resources\Posts\PostResource;
 use App\Models\Post;
-use App\Services\Telegram\TelegramPublisher;
 use App\Support\Dates;
 use App\Support\Locales;
 use Filament\Actions\Action;
@@ -14,17 +15,16 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreAction;
 use Filament\Actions\RestoreBulkAction;
-use Filament\Notifications\Notification;
+use Filament\Actions\ViewAction;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
-use Throwable;
 
 class PostsTable
 {
@@ -32,6 +32,7 @@ class PostsTable
     {
         return $table
             ->defaultSort('published_at', 'desc')
+            ->recordUrl(fn (Post $record) => PostResource::recordUrl($record))
             ->columns([
                 TextColumn::make('title')
                     ->label('عنوان')
@@ -55,13 +56,13 @@ class PostsTable
                 TextColumn::make('source')
                     ->label('منبع')
                     ->badge(),
-                IconColumn::make('telegramMessage')
+                TextColumn::make('telegram_status')
                     ->label('تلگرام')
-                    ->state(fn (Post $record) => $record->telegramMessage !== null)
-                    ->boolean()
-                    ->trueIcon(Heroicon::OutlinedPaperAirplane)
-                    ->falseIcon(Heroicon::OutlinedMinus)
-                    ->tooltip(fn (Post $record) => $record->telegramMessage ? 'ارسال شده: '.Dates::human($record->telegramMessage->sent_at, 'fa') : 'ارسال نشده'),
+                    ->state(fn (Post $record) => $record->telegramMessage?->status)
+                    ->badge()
+                    ->placeholder('—')
+                    ->tooltip(fn (Post $record) => TelegramActions::lastError($record)
+                        ?? ($record->telegramMessage?->sent_at ? Dates::human($record->telegramMessage->sent_at, 'fa') : null)),
                 TextColumn::make('word_count')
                     ->label('کلمات')
                     ->numeric()
@@ -73,42 +74,34 @@ class PostsTable
             ])
             ->modifyQueryUsing(fn ($query) => $query->with('telegramMessage'))
             ->filters([
-                SelectFilter::make('locale')->label('زبان')->options(collect(Locales::ALL)->map(fn ($l) => $l['label'])),
+                SelectFilter::make('locale')->label('زبان')->options(Locales::options()),
                 SelectFilter::make('status')->label('وضعیت')->options(PostStatus::class),
                 SelectFilter::make('source')->label('منبع')->options(PostSource::class),
                 TrashedFilter::make(),
             ])
             ->recordActions([
-                Action::make('view')
-                    ->label('مشاهده')
-                    ->icon(Heroicon::OutlinedEye)
+                Action::make('site')
+                    ->label('در سایت')
+                    ->icon(Heroicon::OutlinedGlobeAlt)
+                    ->color('gray')
                     ->url(fn (Post $record) => $record->path(), shouldOpenInNewTab: true)
                     ->visible(fn (Post $record) => $record->isLive()),
-                EditAction::make()->label(fn (Post $record) => $record->isFromObsidian() ? 'جزئیات' : 'ویرایش'),
+                ViewAction::make()->hidden(fn (Post $record) => PostResource::canEdit($record)),
+                EditAction::make(),
                 ActionGroup::make([
-                    Action::make('telegram')
-                        ->label('ارسال به تلگرام')
-                        ->icon(Heroicon::OutlinedPaperAirplane)
-                        ->requiresConfirmation()
-                        ->modalDescription('این نوشته همین حالا در کانال منتشر می‌شود. هر نوشته فقط یک بار ارسال می‌شود.')
-                        ->visible(fn (Post $record) => $record->isLive() && ! $record->telegramMessage && app(TelegramPublisher::class)->configured())
-                        ->action(function (Post $record) {
-                            try {
-                                app(TelegramPublisher::class)->send($record);
-                                Notification::make()->title('در کانال تلگرام منتشر شد')->success()->send();
-                            } catch (Throwable $e) {
-                                Notification::make()->title('ارسال انجام نشد')->body($e->getMessage())->danger()->send();
-                            }
-                        }),
-                    DeleteAction::make()->hidden(fn (Post $record) => $record->isFromObsidian()),
+                    TelegramActions::send(),
+                    TelegramActions::retry(),
+                    DeleteAction::make(),
                     RestoreAction::make(),
+                    ForceDeleteAction::make(),
                 ]),
             ])
             ->toolbarActions([
+                // Each selected post is checked against PostPolicy; the ones the user may not touch are skipped.
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                    RestoreBulkAction::make(),
-                    ForceDeleteBulkAction::make(),
+                    DeleteBulkAction::make()->authorizeIndividualRecords(),
+                    RestoreBulkAction::make()->authorizeIndividualRecords(),
+                    ForceDeleteBulkAction::make()->authorizeIndividualRecords(),
                 ]),
             ]);
     }

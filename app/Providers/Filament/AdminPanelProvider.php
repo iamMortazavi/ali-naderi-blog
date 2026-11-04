@@ -2,8 +2,9 @@
 
 namespace App\Providers\Filament;
 
-use App\Filament\Widgets\BlogStats;
-use App\Filament\Widgets\LatestPosts;
+use App\Filament\NavigationGroup;
+use App\Filament\Widgets\BlogStatsOverview;
+use App\Filament\Widgets\LatestPostsTable;
 use App\Support\SiteSettings;
 use Filament\FontProviders\LocalFontProvider;
 use Filament\Http\Middleware\Authenticate;
@@ -42,7 +43,7 @@ class AdminPanelProvider extends PanelProvider
                 'gray' => Color::Slate,
             ])
             ->sidebarCollapsibleOnDesktop()
-            ->navigationGroups(['محتوا', 'Obsidian', 'تنظیمات'])
+            ->navigationGroups(NavigationGroup::class)
             ->navigationItems([
                 NavigationItem::make('site')
                     ->label('مشاهده‌ی سایت')
@@ -57,8 +58,8 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->widgets([
                 AccountWidget::class,
-                BlogStats::class,
-                LatestPosts::class,
+                BlogStatsOverview::class,
+                LatestPostsTable::class,
             ])
             ->middleware([
                 EncryptCookies::class,

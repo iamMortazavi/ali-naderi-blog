@@ -2,12 +2,15 @@
 
 namespace App\Filament\Resources\SyncRuns\Pages;
 
+use App\Enums\SyncStatus;
 use App\Filament\Resources\SyncRuns\SyncRunResource;
+use App\Services\Obsidian\VaultFactory;
 use App\Services\Obsidian\VaultSync;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Icons\Heroicon;
+use RuntimeException;
 use Throwable;
 
 class ListSyncRuns extends ListRecords
@@ -22,9 +25,14 @@ class ListSyncRuns extends ListRecords
                 ->icon(Heroicon::OutlinedArrowPath)
                 ->action(function () {
                     try {
-                        $vault = VaultSync::fromSettings();
-                    } catch (Throwable $e) {
+                        $vault = VaultFactory::fromSettings();
+                    } catch (RuntimeException $e) {
                         Notification::make()->title('منبع Obsidian درست تنظیم نشده')->body($e->getMessage())->danger()->send();
+
+                        return;
+                    } catch (Throwable $e) {
+                        report($e);
+                        Notification::make()->title('منبع Obsidian درست تنظیم نشده')->body('جزئیات در گزارش سرور ثبت شد.')->danger()->send();
 
                         return;
                     }
@@ -33,11 +41,12 @@ class ListSyncRuns extends ListRecords
 
                         return;
                     }
-                    $run = app(VaultSync::class)->run($vault);
+                    $run = app(VaultSync::class)->run($vault, force: true); // a manual sync always runs
+                    $ok = $run->status === SyncStatus::Success;
                     $notice = Notification::make()
-                        ->title($run->status === 'success' ? 'همگام‌سازی انجام شد' : 'همگام‌سازی با خطا تمام شد')
-                        ->body("جدید: {$run->created_count}، به‌روز: {$run->updated_count}، خطا: {$run->errorCount()}");
-                    ($run->status === 'success' ? $notice->success() : $notice->danger())->send();
+                        ->title($ok ? 'همگام‌سازی انجام شد' : 'همگام‌سازی با خطا تمام شد')
+                        ->body("جدید: {$run->created_count}، به‌روزشده: {$run->updated_count}، خطا: {$run->errorCount()}");
+                    ($ok ? $notice->success() : $notice->danger())->send();
                 }),
         ];
     }

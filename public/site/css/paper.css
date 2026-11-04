@@ -14,10 +14,10 @@
   --card-border: 1px solid var(--border);
   --card-pad: 22px 24px;
   --card-shadow-hover: 0 6px 20px rgb(0 0 0 / 7%);
-  --info: #2b6cb0;
-  --tip: #2f855a;
-  --warning: #c27803;
-  --danger: #c53030;
+  --info: #245a96;
+  --tip: #276749;
+  --warning: #975a00;
+  --danger: #b02a2a;
   --question: #6b46c1;
 }
 [data-look="paper"][data-theme="dark"] {

@@ -11,11 +11,24 @@ class LocalVault implements Vault
 {
     private string $root;
 
-    public function __construct(string $root)
+    /**
+     * @param  string|null  $allowedRoot  when given, the vault folder must be this folder or inside it
+     *                                    (the panel's folder setting is limited to VAULT_LOCAL_ROOT)
+     */
+    public function __construct(string $root, ?string $allowedRoot = null)
     {
         $real = realpath($root);
         if (! $real || ! is_dir($real)) {
             throw new RuntimeException("Vault folder not found: {$root}");
+        }
+        if ($allowedRoot !== null) {
+            $base = realpath($allowedRoot);
+            if (! $base || ! is_dir($base)) {
+                throw new RuntimeException("The allowed vault root (VAULT_LOCAL_ROOT) does not exist: {$allowedRoot}");
+            }
+            if ($real !== $base && ! str_starts_with($real, rtrim($base, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR)) {
+                throw new RuntimeException("The vault folder must be inside {$base} (VAULT_LOCAL_ROOT in .env); got {$root}");
+            }
         }
         $this->root = $real;
     }
@@ -53,11 +66,23 @@ class LocalVault implements Vault
         return $full;
     }
 
+    /**
+     * The git commit of the folder, or null when it is not a git checkout or has uncommitted changes
+     * (then the files may differ from the commit, so the folder is always imported).
+     */
     public function revision(): ?string
     {
-        $head = @shell_exec('git -C '.escapeshellarg($this->root).' rev-parse --short HEAD 2>/dev/null');
+        if (! function_exists('shell_exec')) {
+            return null;
+        }
+        $git = 'git -C '.escapeshellarg($this->root);
+        $head = @shell_exec($git.' rev-parse --short=12 HEAD 2>/dev/null');
+        if (! is_string($head) || ! preg_match('/^[0-9a-f]{7,40}$/', trim($head))) {
+            return null;
+        }
+        $changes = @shell_exec($git.' status --porcelain --untracked-files=normal -- . 2>/dev/null');
 
-        return $head ? trim($head) : null;
+        return $changes === null || $changes === false || trim($changes) === '' ? trim($head) : null;
     }
 
     public function name(): string

@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\Site\SiteController;
+use App\Http\Controllers\Site\NotFoundController;
 use App\Http\Middleware\CachePublicPages;
 use App\Http\Middleware\SetSiteLocale;
 use Illuminate\Foundation\Application;
@@ -32,10 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Missing posts and pages: follow a saved redirect, or show the site's own 404 page.
         $exceptions->render(function (NotFoundHttpException $e, Request $request) {
             if (! $request->expectsJson() && ! $request->is('admin', 'admin/*', 'livewire*', 'filament/*')) {
-                return app(SiteController::class)->notFound($request);
+                return app(NotFoundController::class)($request);
             }
         });
-        $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
-        );
     })->create();

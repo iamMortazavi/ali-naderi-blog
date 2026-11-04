@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Everything the site owner may change from the admin panel (Settings page).
  * Stored as one JSON row per group in the settings table; missing values fall back to DEFAULTS.
- * Secrets (FTP, Telegram bot token, GitHub token) are never stored here: they live in .env.
+ * Secrets (Telegram bot token, GitHub token, database password) are never stored here: they live in .env.
  */
 final class SiteSettings
 {
@@ -111,6 +111,24 @@ final class SiteSettings
     public static function authorName(string $locale): string
     {
         return (string) self::get("author.name_{$locale}");
+    }
+
+    /**
+     * Top menu for one language: site paths become that language's address.
+     *
+     * @return list<array{label:string,href:string,external:bool}>
+     */
+    public static function menu(string $locale): array
+    {
+        return collect(self::get('menu.items', []))
+            ->filter(fn ($item) => filled($item['path'] ?? null) && filled($item["label_{$locale}"] ?? null))
+            ->map(fn ($item) => [
+                'label' => $item["label_{$locale}"],
+                'href' => Url::isAbsolute($item['path']) ? $item['path'] : Locales::path($locale, $item['path']),
+                'external' => Url::isAbsolute($item['path']),
+            ])
+            ->values()
+            ->all();
     }
 
     public static function look(): string

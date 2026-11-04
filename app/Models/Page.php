@@ -7,8 +7,21 @@ use App\Support\Locales;
 use App\Support\PageCache;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
-/** Fixed pages such as "about", one row per language. */
+/** Fixed pages such as "about", one row per language.
+ *
+ * @property int $id
+ * @property string $locale
+ * @property string $slug
+ * @property string $title
+ * @property string|null $description
+ * @property string $body
+ * @property string|null $body_html
+ * @property bool $in_sitemap
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ */
 #[Fillable(['locale', 'slug', 'title', 'description', 'body', 'in_sitemap'])]
 class Page extends Model
 {

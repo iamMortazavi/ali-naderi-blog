@@ -1,0 +1,15 @@
+# Static analysis with Larastan (PHPStan + Laravel rules).
+# Run: composer analyse   (same as: vendor/bin/phpstan analyse --memory-limit=1G)
+# Larastan boots the application, so a .env (copied from .env.example) must exist.
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 5
+    paths:
+        - app
+    # Cache folder; ignored by git.
+    tmpDir: storage/phpstan
+    # PHPDoc types (e.g. @property on models) are hints, not guarantees; don't report
+    # "always true" checks against them.
+    treatPhpDocTypesAsCertain: false

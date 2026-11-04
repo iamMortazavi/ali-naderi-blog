@@ -2,6 +2,7 @@
 
 namespace App\Services\Content;
 
+use App\Support\Persian;
 use DOMDocument;
 use DOMElement;
 use DOMXPath;
@@ -18,7 +19,7 @@ use Tempest\Highlight\CommonMark\CodeBlockRenderer;
  * Markdown → HTML for posts and pages, with what Obsidian writers expect:
  * tables, footnotes, task lists, ==highlight==, $math$ / $$math$$, callouts (> [!tip] Title),
  * highlighted code, heading anchors and a table of contents, responsive images,
- * and audio/video players for ![](episode.mp3).
+ * and audio/video players for ![](episode.mp3). The final HTML is sanitised (HtmlPolicy).
  */
 class MarkdownRenderer
 {
@@ -37,8 +38,10 @@ class MarkdownRenderer
 
     private MarkdownConverter $converter;
 
-    public function __construct()
-    {
+    public function __construct(
+        private readonly ImageVariants $variants,
+        private readonly HtmlPolicy $policy,
+    ) {
         $environment = new Environment([
             'html_input' => 'allow', // the authors' own notes; Obsidian users write small bits of HTML
             'allow_unsafe_links' => false,
@@ -54,34 +57,13 @@ class MarkdownRenderer
     /** @param string $mediaDirectory folder on the public disk that relative image paths point into */
     public function render(string $markdown, string $mediaDirectory = '', string $locale = 'fa'): Rendered
     {
-        $math = [];
-        $markdown = Prose::map($markdown, function (string $text) use (&$math) {
-            // $$block$$ and $inline$ math are kept away from the Markdown parser and rendered in the browser.
-            $text = preg_replace_callback('/\$\$(.+?)\$\$/s', function ($m) use (&$math) {
-                $math[] = ['block', trim($m[1])];
+        // $$block$$ and $inline$ math are kept away from the Markdown parser and rendered in the browser.
+        $math = new MathExtractor;
+        $markdown = Prose::map($markdown, fn (string $text) => preg_replace(
+            '/==(?=\S)(.+?)(?<=\S)==/u', '<mark>$1</mark>', $math->extract($text),
+        ));
 
-                return "\n\nMATHTOKEN".(count($math) - 1)."END\n\n";
-            }, $text);
-            $text = preg_replace_callback('/(?<![\\\\$\w])\$(?!\s)([^$\n]+?)(?<!\s)\$(?![\w$])/u', function ($m) use (&$math) {
-                $math[] = ['inline', $m[1]];
-
-                return 'MATHTOKEN'.(count($math) - 1).'END';
-            }, $text);
-
-            return preg_replace('/==(?=\S)(.+?)(?<=\S)==/u', '<mark>$1</mark>', $text);
-        });
-
-        $html = (string) $this->converter->convert($markdown);
-
-        $html = preg_replace_callback('/(<p>)?MATHTOKEN(\d+)END(<\/p>)?/', function ($m) use ($math) {
-            [$type, $tex] = $math[(int) $m[2]];
-            $tex = htmlspecialchars($tex, ENT_QUOTES);
-            if ($type === 'block') {
-                return '<div class="math math-block" dir="ltr">'.$tex.'</div>';
-            }
-
-            return ($m[1] ?? '').'<span class="math math-inline" dir="ltr">'.$tex.'</span>'.($m[3] ?? '');
-        }, $html);
+        $html = $math->restore((string) $this->converter->convert($markdown));
 
         return $this->enhance($html, $mediaDirectory, $locale);
     }
@@ -101,13 +83,16 @@ class MarkdownRenderer
         $headings = $this->headings($dom, $xpath);
         $this->callouts($dom, $xpath, $locale);
         $this->images($dom, $xpath, $mediaDirectory);
-        $this->tables($dom, $xpath);
+        $this->tables($dom, $xpath, $locale);
         $this->links($xpath);
+        $this->footnotes($xpath, $locale);
+        $this->inputs($xpath);
 
         $out = '';
         foreach ($root->childNodes as $child) {
             $out .= $dom->saveHTML($child);
         }
+        $out = $this->policy->sanitize($out);
         $plain = trim(preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags(
             preg_replace('/<(pre|div class="math[^"]*")[^>]*>.*?<\/(pre|div)>/s', ' ', $out)
         ), ENT_QUOTES)));
@@ -155,7 +140,7 @@ class MarkdownRenderer
     {
         foreach (iterator_to_array($xpath->query('//blockquote')) as $quote) {
             $first = $xpath->query('./p[1]', $quote)->item(0);
-            if (! $first || ! preg_match('/^\s*\[!([a-z-]+)\]([+-]?)[ \t]*([^\n]*)\n?/i', $first->textContent, $m)) {
+            if (! $first instanceof DOMElement || ! preg_match('/^\s*\[!([a-z-]+)\]([+-]?)[ \t]*([^\n]*)\n?/i', $first->textContent, $m)) {
                 continue;
             }
             $type = strtolower($m[1]);
@@ -254,7 +239,7 @@ class MarkdownRenderer
             $img->setAttribute('loading', 'lazy');
             $img->setAttribute('decoding', 'async');
             if ($path && $disk->exists($path)) {
-                $variants = app(ImageVariants::class)->for($path);
+                $variants = $this->variants->for($path);
                 if ($variants) {
                     $img->setAttribute('src', $variants['src']);
                     $img->setAttribute('srcset', $variants['srcset']);
@@ -277,12 +262,15 @@ class MarkdownRenderer
         }
     }
 
-    private function tables(DOMDocument $dom, DOMXPath $xpath): void
+    /** Wide tables scroll on their own; the scroll area is focusable and named for screen readers. */
+    private function tables(DOMDocument $dom, DOMXPath $xpath, string $locale): void
     {
         foreach (iterator_to_array($xpath->query('//table')) as $table) {
             $wrap = $dom->createElement('div');
             $wrap->setAttribute('class', 'table-wrap');
             $wrap->setAttribute('tabindex', '0');
+            $wrap->setAttribute('role', 'region');
+            $wrap->setAttribute('aria-label', __('site.table', [], $locale));
             $table->parentNode->replaceChild($wrap, $table);
             $wrap->appendChild($table);
         }
@@ -294,6 +282,31 @@ class MarkdownRenderer
             /** @var DOMElement $a */
             $a->setAttribute('rel', 'noopener');
             $a->setAttribute('class', trim($a->getAttribute('class').' external'));
+        }
+    }
+
+    /** Footnote numbers in the text and in the notes list use the page's digits. */
+    private function footnotes(DOMXPath $xpath, string $locale): void
+    {
+        if ($locale !== 'fa') {
+            return;
+        }
+        foreach ($xpath->query('//a[contains(@class, "footnote-ref") or contains(@class, "footnote-backref")]//text()') as $text) {
+            $text->nodeValue = Persian::digits($text->nodeValue);
+        }
+    }
+
+    /** Task-list checkboxes are the only form controls a post may show. */
+    private function inputs(DOMXPath $xpath): void
+    {
+        foreach (iterator_to_array($xpath->query('//input')) as $input) {
+            /** @var DOMElement $input */
+            if (strtolower($input->getAttribute('type')) !== 'checkbox') {
+                $input->parentNode->removeChild($input);
+
+                continue;
+            }
+            $input->setAttribute('disabled', '');
         }
     }
 }

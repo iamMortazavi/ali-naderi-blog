@@ -1,21 +1,33 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "ali-naderi/blog",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
-    "keywords": ["laravel", "framework"],
-    "license": "MIT",
+    "description": "Bilingual (Persian/English) blog for cPanel shared hosting: Laravel 13, a Filament 5 admin panel, Obsidian import from GitHub, and Telegram channel posting.",
+    "keywords": [
+        "laravel",
+        "filament",
+        "blog",
+        "obsidian",
+        "telegram",
+        "persian",
+        "rtl",
+        "bilingual",
+        "cpanel"
+    ],
+    "license": "proprietary",
     "require": {
-        "php": "^8.3",
-        "filament/filament": "*",
+        "php": "^8.4.1",
+        "filament/filament": "^5.11",
         "intervention/image": "^4.4",
         "laravel/framework": "^13.17",
         "laravel/tinker": "^3.0",
+        "symfony/html-sanitizer": "^8.1",
         "symfony/yaml": "^8.1",
         "tempest/highlight": "^2.30"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
+        "larastan/larastan": "^3.14",
         "laravel/pail": "^1.2.5",
         "laravel/pao": "^1.0.6",
         "laravel/pint": "^1.27",
@@ -40,9 +52,7 @@
             "composer install",
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
             "@php artisan key:generate",
-            "@php artisan migrate --force",
-            "npm install --ignore-scripts",
-            "npm run build"
+            "@php artisan migrate --seed --force"
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
@@ -51,6 +61,14 @@
         "test": [
             "@php artisan config:clear --ansi @no_additional_args",
             "@php artisan test"
+        ],
+        "lint": "pint",
+        "lint:check": "pint --test",
+        "analyse": "phpstan analyse --memory-limit=1G",
+        "check": [
+            "@lint:check",
+            "@analyse",
+            "@test"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
@@ -63,14 +81,17 @@
         "post-root-package-install": [
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
         ],
-        "post-create-project-cmd": [
-            "@php artisan key:generate --ansi",
-            "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
-            "@php artisan migrate --graceful --ansi"
-        ],
         "pre-package-uninstall": [
             "Illuminate\\Foundation\\ComposerScripts::prePackageUninstall"
         ]
+    },
+    "scripts-descriptions": {
+        "setup": "Install dependencies, create .env, generate the app key and migrate + seed the database.",
+        "test": "Run the PHPUnit test suite.",
+        "lint": "Fix code style with Laravel Pint.",
+        "lint:check": "Check code style without changing files.",
+        "analyse": "Run PHPStan (Larastan) static analysis.",
+        "check": "Run every check CI runs: style, static analysis and tests."
     },
     "extra": {
         "laravel": {
@@ -82,7 +103,6 @@
         "preferred-install": "dist",
         "sort-packages": true,
         "allow-plugins": {
-            "pestphp/pest-plugin": true,
             "php-http/discovery": true
         }
     },

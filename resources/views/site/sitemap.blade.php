@@ -3,7 +3,7 @@
 @foreach ($entries as $entry)
   <url>
     <loc>{{ $entry['loc'] }}</loc>
-    @if ($entry['lastmod'])<lastmod>{{ \Illuminate\Support\Carbon::parse($entry['lastmod'])->toAtomString() }}</lastmod>@endif
+    @if ($entry['lastmod'])<lastmod>{{ $entry['lastmod']->format(DATE_ATOM) }}</lastmod>@endif
     @foreach ($entry['alternates'] as $code => $url)
     <xhtml:link rel="alternate" hreflang="{{ $code }}" href="{{ $url }}"/>
     @endforeach

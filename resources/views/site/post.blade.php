@@ -1,22 +1,11 @@
 @extends('site.layout')
-@php
-    use App\Support\Assets;
-    use App\Support\Dates;
-    use App\Support\Locales;
-    $toc = collect($post->toc ?? []);
-    $video = null;
-    if ($post->video_url) {
-        if (preg_match('~(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/shorts/)([\w-]{11})~', $post->video_url, $m)) {
-            $video = 'https://www.youtube-nocookie.com/embed/'.$m[1];
-        } elseif (preg_match('~aparat\.com/v/(\w+)~', $post->video_url, $m)) {
-            $video = 'https://www.aparat.com/video/video/embed/videohash/'.$m[1].'/vt/frame';
-        }
-    }
-@endphp
+@use('App\Support\Assets')
+@use('App\Support\Dates')
+@use('App\Support\Locales')
 @section('main')
 <article class="post wrap">
   <header class="post-header">
-    <nav class="breadcrumbs" aria-label="breadcrumbs">
+    <nav class="breadcrumbs" aria-label="{{ __('site.breadcrumbs') }}">
       <a href="{{ Locales::path($locale) }}">{{ __('site.home') }}</a><span aria-hidden="true">›</span>
       <a href="{{ Locales::path($locale, '/posts') }}">{{ __('site.posts') }}</a>
     </nav>
@@ -38,10 +27,9 @@
     @endif
   </header>
 
-  @if ($cover = $post->coverUrl())
+  @if ($cover)
   <figure class="post-cover">
-    @php $variants = (! str_starts_with($post->cover_path, 'http')) ? app(App\Services\Content\ImageVariants::class)->for($post->cover_path) : null; @endphp
-    <img src="{{ $variants['src'] ?? $cover }}" @if ($variants) srcset="{{ $variants['srcset'] }}" sizes="(max-width: 760px) 100vw, 720px" width="{{ $variants['width'] }}" height="{{ $variants['height'] }}" @endif alt="{{ $post->cover_alt }}" fetchpriority="high" decoding="async">
+    <img src="{{ $cover['src'] }}" @if ($cover['srcset']) srcset="{{ $cover['srcset'] }}" sizes="(max-width: 760px) 100vw, 720px" @endif @if ($cover['width']) width="{{ $cover['width'] }}" height="{{ $cover['height'] }}" @endif alt="{{ $cover['alt'] }}" fetchpriority="high" decoding="async">
   </figure>
   @endif
 
@@ -61,11 +49,11 @@
   </section>
   @endif
 
-  @if ($post->show_toc && $toc->count() >= 3)
+  @if ($post->show_toc && count($post->toc ?? []) >= 3)
   <details class="toc" open>
     <summary>{{ __('site.toc') }}</summary>
     <ul>
-      @foreach ($toc as $h)
+      @foreach ($post->toc as $h)
       <li class="toc-level-{{ $h['level'] }}"><a href="#{{ $h['id'] }}">{{ $h['text'] }}</a></li>
       @endforeach
     </ul>
@@ -91,11 +79,11 @@
       <a href="https://t.me/share/url?url={{ urlencode($post->url()) }}&text={{ urlencode($post->title) }}" rel="noopener" target="_blank" aria-label="Telegram">{!! Assets::icon('telegram') !!}</a>
       <a href="https://x.com/intent/post?url={{ urlencode($post->url()) }}&text={{ urlencode($post->title) }}" rel="noopener" target="_blank" aria-label="X">{!! Assets::icon('x') !!}</a>
       <a href="https://www.linkedin.com/sharing/share-offsite/?url={{ urlencode($post->url()) }}" rel="noopener" target="_blank" aria-label="LinkedIn">{!! Assets::icon('linkedin') !!}</a>
-      <button type="button" class="copy-link" data-url="{{ $post->url() }}" aria-label="{{ __('site.copyLink') }}">{!! Assets::icon('link') !!}</button>
+      <button type="button" class="copy-link" data-url="{{ $post->url() }}" aria-label="{{ __('site.copyLink') }}" title="{{ __('site.copyLink') }}">{!! Assets::icon('link') !!}</button>
     </div>
 
     @if ($newer || $older)
-    <nav class="post-nav">
+    <nav class="post-nav" aria-label="{{ __('site.postNav') }}">
       @if ($newer)<a class="post-nav-newer" href="{{ $newer->path() }}" rel="next"><small>{{ __('site.newer') }}</small><span>{{ $newer->title }}</span></a>@endif
       @if ($older)<a class="post-nav-older" href="{{ $older->path() }}" rel="prev"><small>{{ __('site.older') }}</small><span>{{ $older->title }}</span></a>@endif
     </nav>

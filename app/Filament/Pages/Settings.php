@@ -2,10 +2,15 @@
 
 namespace App\Filament\Pages;
 
-use App\Services\Obsidian\VaultSync;
+use App\Enums\SyncDriver;
+use App\Filament\NavigationGroup;
+use App\Filament\Resources\Posts\Schemas\PostForm;
+use App\Services\Obsidian\VaultFactory;
 use App\Services\Telegram\TelegramPublisher;
+use App\Support\Locales;
 use App\Support\SiteSettings;
 use BackedEnum;
+use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\FileUpload;
@@ -28,18 +33,21 @@ use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use RuntimeException;
 use Throwable;
 use UnitEnum;
 
 /**
  * Every setting the site owner may change, saved to the settings table (App\Support\SiteSettings).
  * Secrets (Telegram bot token, GitHub token, FTP) stay in .env and are never shown here.
+ *
+ * @property-read Schema $form
  */
 class Settings extends Page
 {
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;
 
-    protected static string|UnitEnum|null $navigationGroup = 'تنظیمات';
+    protected static string|UnitEnum|null $navigationGroup = NavigationGroup::Settings;
 
     protected static ?int $navigationSort = 1;
 
@@ -120,7 +128,7 @@ class Settings extends Page
                         ->regex('#^(https://t\.me/\S+)?$#')->placeholder('https://t.me/…')
                         ->helperText('در پایین سایت به‌عنوان «کانال تلگرام» نمایش داده می‌شود.'),
                     CheckboxList::make('telegram.languages')->label('نوشته‌های کدام زبان به کانال برود؟')
-                        ->options(['fa' => 'فارسی', 'en' => 'انگلیسی'])->columns(2),
+                        ->options(Locales::options())->columns(2),
                     Toggle::make('telegram.hashtags')->label('برچسب‌ها به‌صورت هشتگ'),
                     Grid::make(2)->schema([
                         TextInput::make('telegram.footer_fa')->label('خط پایانی پیام‌های فارسی')->maxLength(200)->placeholder('@channel'),
@@ -129,7 +137,7 @@ class Settings extends Page
                 ]),
                 Tab::make('سئو')->icon(Heroicon::OutlinedMagnifyingGlass)->schema([
                     FileUpload::make('seo.default_image')->label('تصویر پیش‌فرض پیش‌نمایش لینک‌ها')
-                        ->disk('public')->directory('site')->image()->maxSize(4096)
+                        ->disk('public')->directory('site')->acceptedFileTypes(PostForm::IMAGE_TYPES)->maxSize(4096)
                         ->helperText('برای صفحه‌ها و نوشته‌هایی که تصویر کاور ندارند. به ۱۲۰۰×۶۳۰ برش داده می‌شود.'),
                     Grid::make(2)->schema([
                         TextInput::make('seo.google_verification')->label('کد Google Search Console')->extraInputAttributes($ltr)
@@ -140,23 +148,24 @@ class Settings extends Page
                 ]),
                 Tab::make('Obsidian')->icon(Heroicon::OutlinedArrowPath)->schema([
                     Radio::make('sync.driver')->label('یادداشت‌ها از کجا خوانده شوند؟')->required()->live()
-                        ->options([
-                            'none' => 'خاموش: نوشته‌ها فقط در پنل نوشته می‌شوند',
-                            'github' => 'مخزن GitHub: Obsidian با افزونه‌ی obsidian-git در آن ذخیره می‌کند',
-                            'local' => 'پوشه‌ای روی همین سرور',
-                        ]),
-                    Grid::make(2)->visible(fn (Get $get) => $get('sync.driver') === 'github')->schema([
+                        ->options(SyncDriver::class),
+                    Grid::make(2)->visible(fn (Get $get) => self::driver($get) === SyncDriver::GitHub)->schema([
                         TextInput::make('sync.github_repo')->label('مخزن')->placeholder('owner/blog-vault')->extraInputAttributes($ltr)
-                            ->regex('#^[\w.-]+/[\w.-]+$#')->required(fn (Get $get) => $get('sync.driver') === 'github')
+                            ->regex('#^[\w.-]+/[\w.-]+$#')->required(fn (Get $get) => self::driver($get) === SyncDriver::GitHub)
                             ->helperText('برای مخزن خصوصی، توکن فقط‌خواندنی را در .env با نام VAULT_GITHUB_TOKEN بگذارید.'),
                         TextInput::make('sync.github_branch')->label('شاخه')->default('main')->extraInputAttributes($ltr),
                     ]),
                     TextInput::make('sync.local_path')->label('مسیر پوشه')->extraInputAttributes($ltr)
-                        ->visible(fn (Get $get) => $get('sync.driver') === 'local')
-                        ->required(fn (Get $get) => $get('sync.driver') === 'local')
-                        ->helperText('مسیر کامل، یا نسبت به پوشه‌ی برنامه؛ مثلاً example-vault'),
+                        ->visible(fn (Get $get) => self::driver($get) === SyncDriver::Local)
+                        ->required(fn (Get $get) => self::driver($get) === SyncDriver::Local)
+                        ->rule(fn (): Closure => function (string $attribute, mixed $value, Closure $fail) {
+                            if (filled($value) && ($error = self::vaultPathError((string) $value))) {
+                                $fail($error);
+                            }
+                        })
+                        ->helperText(fn () => 'مسیر کامل، یا نسبت به پوشه‌ی برنامه؛ مثلاً example-vault. باید داخل '.config('blog.vault_root').' باشد.'),
                     TextInput::make('sync.posts_folder')->label('پوشه‌ی نوشته‌ها در vault')->default('posts')->extraInputAttributes($ltr)
-                        ->visible(fn (Get $get) => $get('sync.driver') !== 'none')
+                        ->visible(fn (Get $get) => self::driver($get) !== SyncDriver::None)
                         ->helperText('فقط یادداشت‌های این پوشه که publish: true دارند منتشر می‌شوند. هر ۱۰ دقیقه خودکار بررسی می‌شود.'),
                 ]),
             ]),
@@ -183,13 +192,16 @@ class Settings extends Page
     {
         $data = $this->form->getState();
         foreach (array_keys(SiteSettings::DEFAULTS) as $group) {
-            if (isset($data[$group])) {
-                $value = $data[$group];
-                if ($group === 'site') {
-                    $value['url'] = rtrim((string) $value['url'], '/');
-                }
-                SiteSettings::put($group, $value);
+            if (! isset($data[$group])) {
+                continue;
             }
+            $value = array_map(fn ($v) => $v instanceof BackedEnum ? $v->value : $v, $data[$group]);
+            if ($group === 'site') {
+                $value['url'] = rtrim((string) $value['url'], '/');
+            }
+            // Hidden fields (for example the GitHub settings while the local folder is chosen) are not in
+            // the form state: keep their stored values instead of wiping them.
+            SiteSettings::put($group, array_replace(SiteSettings::group($group), $value));
         }
         Notification::make()->title('تنظیمات ذخیره شد')->success()->send();
     }
@@ -198,7 +210,7 @@ class Settings extends Page
     {
         $this->save();
         try {
-            $vault = VaultSync::fromSettings();
+            $vault = VaultFactory::fromSettings();
             if (! $vault) {
                 Notification::make()->title('همگام‌سازی خاموش است')->warning()->send();
 
@@ -209,8 +221,40 @@ class Settings extends Page
             $notes = collect(array_keys($files))->filter(fn ($p) => str_starts_with($p, $folder) && str_ends_with($p, '.md'))->count();
             Notification::make()->title('اتصال برقرار است')
                 ->body(count($files)." فایل در vault، {$notes} یادداشت در پوشه‌ی {$folder}")->success()->send();
-        } catch (Throwable $e) {
+        } catch (RuntimeException $e) {
+            // Messages written by the vault classes (folder missing, GitHub refused, …).
             Notification::make()->title('اتصال برقرار نشد')->body($e->getMessage())->danger()->send();
+        } catch (Throwable $e) {
+            report($e);
+            Notification::make()->title('اتصال برقرار نشد')->body('خطای پیش‌بینی‌نشده؛ جزئیات در گزارش سرور ثبت شد.')->danger()->send();
         }
+    }
+
+    /**
+     * Why a local vault folder cannot be used, or null when it can. The folder must exist and be inside
+     * config('blog.vault_root'), so the panel cannot point the import at arbitrary server folders.
+     */
+    public static function vaultPathError(string $value): ?string
+    {
+        $root = realpath((string) config('blog.vault_root'));
+        if ($root === false) {
+            return 'پوشه‌ی مجاز vault روی سرور پیدا نشد (VAULT_LOCAL_ROOT در .env را بررسی کنید).';
+        }
+        $path = realpath(str_starts_with($value, '/') ? $value : base_path($value));
+        if ($path === false || ! is_dir($path)) {
+            return 'این پوشه روی سرور پیدا نشد.';
+        }
+        if ($path !== $root && ! str_starts_with($path, rtrim($root, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR)) {
+            return "پوشه‌ی vault باید داخل {$root} باشد.";
+        }
+
+        return null;
+    }
+
+    private static function driver(Get $get): SyncDriver
+    {
+        $driver = $get('sync.driver');
+
+        return $driver instanceof SyncDriver ? $driver : (SyncDriver::tryFrom((string) $driver) ?? SyncDriver::None);
     }
 }

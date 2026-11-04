@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\UserRole;
 use App\Models\Page;
 use App\Models\User;
 use App\Support\SiteSettings;
@@ -9,22 +10,23 @@ use Illuminate\Database\Seeder;
 use RuntimeException;
 
 /**
- * First-run data: the admin account (from ADMIN_* in .env), starting settings and the about pages.
+ * First-run data: the admin account (config/blog.php admin, from ADMIN_* in .env), starting settings and the about pages.
  * Safe to run again: nothing that already exists is overwritten.
  */
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $email = env('ADMIN_EMAIL');
-        $password = env('ADMIN_PASSWORD');
+        // From config/blog.php (ADMIN_* in .env); env() would return null once the config is cached.
+        $email = config('blog.admin.email');
+        $password = config('blog.admin.password');
         if (! $email || ! $password) {
             throw new RuntimeException('Set ADMIN_EMAIL and ADMIN_PASSWORD in .env before seeding.');
         }
         User::query()->firstOrCreate(['email' => $email], [
-            'name' => env('ADMIN_NAME', 'مدیر سایت'),
+            'name' => config('blog.admin.name') ?: 'مدیر سایت',
             'password' => $password,
-            'role' => 'admin',
+            'role' => UserRole::Admin,
         ]);
 
         $starting = [

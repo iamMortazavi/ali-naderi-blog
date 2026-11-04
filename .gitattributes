@@ -6,6 +6,26 @@
 *.md diff=markdown
 *.php diff=php
 
+# Binary assets: never touch line endings, never diff as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.avif binary
+*.ico binary
+*.woff2 binary
+*.zip binary
+
+# Not needed on the server; left out of `git archive` (scripts/package.sh).
 /.github export-ignore
-CHANGELOG.md export-ignore
+/tests export-ignore
+/example-vault export-ignore
+/docs/designs export-ignore
+/.editorconfig export-ignore
+/.gitattributes export-ignore
+/phpunit.xml export-ignore
+/phpstan.neon export-ignore
+/pint.json export-ignore
+/CONTRIBUTING.md export-ignore
 .styleci.yml export-ignore

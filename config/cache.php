@@ -53,6 +53,13 @@ return [
             'lock_path' => storage_path('framework/cache/locks'),
         ],
 
+        // Whole public pages (App\Support\PageCache). A store of its own, so clearing it after
+        // an edit never touches other cached data.
+        'pages' => [
+            'driver' => 'file',
+            'path' => storage_path('framework/cache/pages'),
+        ],
+
         'storage' => [
             'driver' => 'storage',
             'disk' => env('CACHE_STORAGE_DISK'),

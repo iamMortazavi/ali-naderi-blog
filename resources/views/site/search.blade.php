@@ -1,9 +1,7 @@
 @extends('site.layout')
-@php
-    use App\Support\Assets;
-    use App\Support\Locales;
-    use App\Support\Persian;
-@endphp
+@use('App\Support\Assets')
+@use('App\Support\Locales')
+@use('App\Support\Persian')
 @section('main')
 <div class="wrap">
   <header class="list-header"><h1>{{ __('site.search') }}</h1></header>
@@ -14,8 +12,8 @@
     <button type="submit">{{ __('site.searchButton') }}</button>
   </form>
   @if ($searched)
-    @php $label = __('site.searchResults', ['count' => $posts->count(), 'q' => $q]); @endphp
-    <p class="search-hint">{{ $locale === 'fa' ? Persian::digits($label) : $label }}</p>
+    {{-- Only the count gets Persian digits; the visitor's words are escaped and shown exactly as typed. --}}
+    <p class="search-hint">{!! trans_choice('site.searchResults', $posts->count(), ['count' => e(Persian::forLocale($posts->count(), $locale)), 'q' => '<bdi>'.e($q).'</bdi>']) !!}</p>
     <div class="post-list">
       @forelse ($posts as $post)
         @include('site.partials.post-card', ['post' => $post])

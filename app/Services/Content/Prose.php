@@ -41,8 +41,12 @@ final class Prose
         return $chunks;
     }
 
-    /** @param callable(string):string $fn */
-    public static function map(string $markdown, callable $fn, bool $stripComments = true): string
+    /**
+     * Apply $fn to the prose between code; Obsidian %% private comments %% are removed first.
+     *
+     * @param  callable(string):string  $fn
+     */
+    public static function map(string $markdown, callable $fn): string
     {
         $out = '';
         foreach (self::splitFenced($markdown) as [$isCode, $chunk]) {
@@ -51,9 +55,7 @@ final class Prose
 
                 continue;
             }
-            if ($stripComments) {
-                $chunk = preg_replace('/%%.*?%%/s', '', $chunk); // Obsidian private comments
-            }
+            $chunk = preg_replace('/%%.*?%%/s', '', $chunk);
             $parts = preg_split('/(`+)(.+?)\1/s', $chunk, -1, PREG_SPLIT_OFFSET_CAPTURE);
             preg_match_all('/(`+)(.+?)\1/s', $chunk, $codes);
             foreach ($parts as $i => [$text]) {
