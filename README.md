@@ -13,10 +13,11 @@ Design and decisions: [docs/designs/bilingual-obsidian-blog.md](docs/designs/bil
                        pages.yml    staging: GitHub Pages, hidden from search engines
                        ci.yml       pull requests
 .hugo-version          the one place the Hugo version is pinned
-vercel.json, scripts/  Vercel hosting (builds without GitHub Actions)
+.env.example           settings for make deploy (copy to .env)
 schema/                post.schema.json (rules for notes), settings.schema.json (rules for panel settings)
 tools/blogtools/       build_content.py (vault → Hugo), obsidian.py (link conversion), settings.py,
-                       telegram.py (channel posts, sent once), notify.py (maintainer alerts)
+                       telegram.py (channel posts, sent once), notify.py (maintainer alerts),
+                       dev.py (local preview), deploy.py (publish from this computer over FTPS)
 tools/tests/           unit tests and a full Hugo build test
 site/                  the Hugo project
   config/_default/     hugo.toml, languages.toml, markup.toml, params.toml (maintainer only)
@@ -34,11 +35,14 @@ example-vault/         a sample content repository: posts, attachments, template
 Requires Hugo extended (version in `.hugo-version`) and Python 3.10+ with PyYAML.
 
 ```bash
-make serve                         # example vault, live preview on http://localhost:1313
+make serve                         # live preview on http://localhost:1313, admin on /admin/; rebuilds when notes change
 make serve VAULT=../content-vault  # the real vault
 make test
-make telegram-dry-run
+make deploy-check                  # build and show what would be uploaded
+make deploy                        # publish to cPanel over FTPS (settings in .env, see .env.example)
 ```
+
+The admin panel works locally without any login: open `http://localhost:1313/admin/` in Chrome or Edge, choose "Work with Local Repository" and select this folder. Changes are saved straight into `site/` and the preview reloads.
 
 Preview the other look on any page by adding `?look=ink` to the address.
 

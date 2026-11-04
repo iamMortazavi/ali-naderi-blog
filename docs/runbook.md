@@ -62,17 +62,23 @@ The domain, titles, menu and links are set in the admin panel (Settings → Site
 
 Nothing to do. Each push from Obsidian triggers a deploy. A daily run at 09:00 Tehran publishes posts whose date has arrived.
 
+## Publishing from this computer (without GitHub Actions)
+
+`make deploy` does on this computer what the deploy workflow does on GitHub: checks settings and notes, builds, uploads changed files to cPanel over FTPS, checks that the live site shows the new build, posts new articles to Telegram, and sends the maintainer notice.
+
+1. `cp .env.example .env` and fill in the FTP account (cPanel → FTP Accounts) and, optionally, the Telegram values. `.env` is never committed.
+2. Set the domain in the admin panel (Settings → Site → Site address), or in `site/data/settings.yaml`.
+3. `make deploy-check` builds and lists what would be uploaded, without uploading.
+4. `make deploy` publishes. The first run uploads everything; later runs upload only what changed.
+5. If Telegram posts were sent, commit and push `state/telegram-sent.json`, so another computer does not send them again.
+
+The tool keeps its list of uploaded files on the host in `.deploy-state.json` (blocked from the web by `.htaccess`). It never deletes files it did not upload. `python3 -m blogtools.deploy --full` uploads everything again, for example after files were changed by hand on the host.
+
+Telegram from this computer needs access to api.telegram.org. If that is blocked, run with `--no-telegram` and send later.
+
 ## Staging
 
 `pages.yml` builds a copy on GitHub Pages, hidden from search engines and never posting to Telegram. It uses the friend's vault once `CONTENT_REPO` is set, otherwise `example-vault/`. It runs on every push to `main` and on every content update. GitHub Pages needs a public repository or a paid plan (Settings → Pages → Source: GitHub Actions).
-
-## Vercel (works without GitHub Actions)
-
-Vercel builds the site on its own machines from `vercel.json` and `scripts/vercel-build.sh`, so it works even when GitHub Actions is unavailable on the account. It builds and hosts the site only: it does not upload to cPanel or post to Telegram.
-
-1. vercel.com → Add New → Project → import `ali-naderi-blog`. Leave every build setting as detected (they come from `vercel.json`).
-2. Optional environment variables: `SITE_ENVIRONMENT` = `production` to let search engines index this copy (default `staging` hides it); `CONTENT_REPO` and `CONTENT_TOKEN` to build from the friend's vault instead of `example-vault/`.
-3. Every push to `main` redeploys. Content-only pushes in the vault repository need a Vercel Deploy Hook: create one in Project → Settings → Git, and call it from the vault's publish workflow (or by hand).
 
 ## Admin panel
 
