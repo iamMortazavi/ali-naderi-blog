@@ -13,6 +13,7 @@ Design and decisions: [docs/designs/bilingual-obsidian-blog.md](docs/designs/bil
                        pages.yml    staging: GitHub Pages, hidden from search engines
                        ci.yml       pull requests
 .hugo-version          the one place the Hugo version is pinned
+vercel.json, scripts/  Vercel hosting (builds without GitHub Actions)
 schema/                post.schema.json (rules for notes), settings.schema.json (rules for panel settings)
 tools/blogtools/       build_content.py (vault → Hugo), obsidian.py (link conversion), settings.py,
                        telegram.py (channel posts, sent once), notify.py (maintainer alerts)

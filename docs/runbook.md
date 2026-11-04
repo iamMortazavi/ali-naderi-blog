@@ -66,6 +66,14 @@ Nothing to do. Each push from Obsidian triggers a deploy. A daily run at 09:00 T
 
 `pages.yml` builds a copy on GitHub Pages, hidden from search engines and never posting to Telegram. It uses the friend's vault once `CONTENT_REPO` is set, otherwise `example-vault/`. It runs on every push to `main` and on every content update. GitHub Pages needs a public repository or a paid plan (Settings → Pages → Source: GitHub Actions).
 
+## Vercel (works without GitHub Actions)
+
+Vercel builds the site on its own machines from `vercel.json` and `scripts/vercel-build.sh`, so it works even when GitHub Actions is unavailable on the account. It builds and hosts the site only: it does not upload to cPanel or post to Telegram.
+
+1. vercel.com → Add New → Project → import `ali-naderi-blog`. Leave every build setting as detected (they come from `vercel.json`).
+2. Optional environment variables: `SITE_ENVIRONMENT` = `production` to let search engines index this copy (default `staging` hides it); `CONTENT_REPO` and `CONTENT_TOKEN` to build from the friend's vault instead of `example-vault/`.
+3. Every push to `main` redeploys. Content-only pushes in the vault repository need a Vercel Deploy Hook: create one in Project → Settings → Git, and call it from the vault's publish workflow (or by hand).
+
 ## Admin panel
 
 `https://domain/admin/` (or the staging address + `/admin/`). There is no separate admin username and password: the panel signs in to GitHub, and GitHub decides who may change the site. Anyone with write access to the site repository can sign in by pasting a fine-grained token (Contents: read and write on this repository). For a local test without any login, run `make serve`, open `http://localhost:1313/admin/` in Chrome or Edge, choose "Work with Local Repository" and pick this folder. The panel changes `site/data/settings.yaml` and the about pages, which starts a deploy. A look change rewrites every page, so the upload takes longer than usual.
