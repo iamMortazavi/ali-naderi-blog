@@ -4,15 +4,10 @@
 
 name: Staging (GitHub Pages)
 
+# Started by hand only: a private repository on a free plan cannot use the github-pages environment,
+# and a push trigger would fail on every commit. Once the repository is public (or on GitHub Pro),
+# add the same push and repository_dispatch triggers as deploy.yml.
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - "state/**"
-      - "docs/**"
-      - "*.md"
-  repository_dispatch:
-    types: [content-updated]
   workflow_dispatch:
 
 concurrency:

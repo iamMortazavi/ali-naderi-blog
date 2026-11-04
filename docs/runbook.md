@@ -64,7 +64,7 @@ Nothing to do. Each push from Obsidian triggers a deploy. A daily run at 09:00 T
 
 ## Staging
 
-Every push to `main` also builds a copy on GitHub Pages (`pages.yml`), hidden from search engines and never posting to Telegram. It uses the friend's vault once `CONTENT_REPO` is set, otherwise `example-vault/`. Enable it once: repository Settings → Pages → Source: GitHub Actions.
+`pages.yml` builds a copy on GitHub Pages, hidden from search engines and never posting to Telegram. It uses the friend's vault once `CONTENT_REPO` is set, otherwise `example-vault/`. GitHub Pages needs a public repository or a paid plan, so the workflow only runs by hand (Actions → Staging → Run workflow) after enabling Settings → Pages → Source: GitHub Actions. On a public or paid repository, add push triggers to run it on every change.
 
 ## Admin panel
 
