@@ -5,7 +5,7 @@
 
 backend:
   name: github
-  repo: OWNER/REPO
+  repo: iamMortazavi/ali-naderi-blog
   branch: main
   commit_messages:
     update: "panel: update {{slug}}"
