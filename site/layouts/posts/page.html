@@ -1,0 +1,67 @@
+{{ define "main" }}
+<article class="post wrap">
+  <header class="post-header">
+    <nav class="breadcrumbs" aria-label="breadcrumbs">
+      <a href="{{ site.Home.RelPermalink }}">{{ T "home" }}</a><span aria-hidden="true">›</span>
+      <a href="{{ .CurrentSection.RelPermalink }}">{{ T "posts" }}</a>
+    </nav>
+    <h1 class="post-title">{{ .Title }}</h1>
+    {{- with .Description }}
+    <p class="post-description">{{ . }}</p>
+    {{- end }}
+    <div class="post-meta">
+      {{ partial "post-meta.html" . }}
+      {{- if gt (.Lastmod.Sub .Date).Hours 24 }}
+      <span class="meta-sep" aria-hidden="true">·</span>
+      <span class="meta-item">{{ T "updated" }} <time datetime="{{ .Lastmod.Format "2006-01-02T15:04:05Z07:00" }}">{{ partial "date.html" .Lastmod }}</time></span>
+      {{- end }}
+    </div>
+    {{- with .Translations }}
+    <p class="translations">{{ T "readIn" }}:
+      {{- range . }} <a href="{{ .RelPermalink }}" hreflang="{{ .Language.Lang }}" lang="{{ .Language.Lang }}">{{ .Language.Label }}</a>{{ end }}
+    </p>
+    {{- end }}
+  </header>
+
+  {{ partial "cover.html" . }}
+  {{ partial "media.html" . }}
+  {{ partial "toc.html" . }}
+
+  <div class="post-content">
+    {{ .Content }}
+  </div>
+
+  <footer class="post-footer">
+    {{- with .GetTerms "series" }}
+    <p class="post-series">{{ T "series" }}: {{ range . }}<a href="{{ .RelPermalink }}">{{ .LinkTitle }}</a>{{ end }}</p>
+    {{- end }}
+    {{- with .GetTerms "tags" }}
+    <ul class="tags" aria-label="{{ T "tags" }}">
+      {{- range . }}<li><a href="{{ .RelPermalink }}">#{{ .LinkTitle }}</a></li>{{ end }}
+    </ul>
+    {{- end }}
+
+    <div class="share">
+      <span>{{ T "share" }}:</span>
+      <a href="https://t.me/share/url?url={{ .Permalink | urlquery }}&text={{ .Title | urlquery }}" rel="noopener" target="_blank" aria-label="Telegram">{{ partial "icon.html" "telegram" }}</a>
+      <a href="https://x.com/intent/post?url={{ .Permalink | urlquery }}&text={{ .Title | urlquery }}" rel="noopener" target="_blank" aria-label="X">{{ partial "icon.html" "x" }}</a>
+      <a href="https://www.linkedin.com/sharing/share-offsite/?url={{ .Permalink | urlquery }}" rel="noopener" target="_blank" aria-label="LinkedIn">{{ partial "icon.html" "linkedin" }}</a>
+      <button type="button" class="copy-link" data-url="{{ .Permalink }}" data-done="{{ T "copied" }}" aria-label="{{ T "copyLink" }}">{{ partial "icon.html" "link" }}</button>
+    </div>
+
+    <nav class="post-nav">
+      {{- with .NextInSection }}<a class="post-nav-newer" href="{{ .RelPermalink }}" rel="next"><small>{{ T "newer" }}</small><span>{{ .Title }}</span></a>{{ end }}
+      {{- with .PrevInSection }}<a class="post-nav-older" href="{{ .RelPermalink }}" rel="prev"><small>{{ T "older" }}</small><span>{{ .Title }}</span></a>{{ end }}
+    </nav>
+
+    {{- with site.RegularPages.Related . | first 3 }}
+    <section class="related">
+      <h2>{{ T "related" }}</h2>
+      <ul>
+        {{- range . }}<li><a href="{{ .RelPermalink }}">{{ .Title }}</a> <small>{{ partial "date.html" .Date }}</small></li>{{ end }}
+      </ul>
+    </section>
+    {{- end }}
+  </footer>
+</article>
+{{ end }}

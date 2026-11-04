@@ -1,0 +1,6 @@
+# Theme parameters owned by the maintainer.
+
+# Language that hreflang="x-default" points to.
+xDefaultLang = "fa"
+# Fallback image for link previews when a post has no cover (inside assets/).
+defaultImage = "images/og-default.png"

@@ -1,0 +1,127 @@
+# Production: build the site from the friend's vault, upload it to the cPanel host, then post new articles to Telegram.
+# Runs outside Iran on GitHub's machines, so Telegram and GitHub are always reachable.
+# Stays off until the repository variable PRODUCTION is "true". Setup: docs/runbook.md.
+#
+#   variables: PRODUCTION=true, CONTENT_REPO (owner/name), FTP_SERVER_DIR (e.g. public_html/)
+#   secrets:   CONTENT_TOKEN, FTP_SERVER, FTP_USERNAME, FTP_PASSWORD,
+#              TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, NOTIFY_CHAT_ID
+# The site address comes from site.url in site/data/settings.yaml (admin panel).
+
+name: Deploy (production)
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "state/**"
+      - "docs/**"
+      - "example-vault/**"
+      - "*.md"
+  repository_dispatch:
+    types: [content-updated]   # sent by the content repository on every push
+  schedule:
+    - cron: "30 5 * * *"       # 09:00 Tehran: publishes posts whose date has arrived
+  workflow_dispatch:
+    inputs:
+      telegram:
+        description: Send new posts to Telegram
+        type: boolean
+        default: true
+
+# One deploy at a time. A new run waits instead of cancelling one that is halfway through an upload.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    if: vars.PRODUCTION == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      PYTHONPATH: tools
+    steps:
+      - name: Check out site
+        uses: actions/checkout@v4
+
+      - name: Check out content (the friend's vault)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.CONTENT_REPO }}
+          token: ${{ secrets.CONTENT_TOKEN }}
+          path: _vault
+
+      - id: build
+        name: Build
+        uses: ./.github/actions/build-site
+        with:
+          vault: _vault
+
+      - id: deploy
+        name: Upload to host (FTPS, changed files only)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: ./site/public/
+          server-dir: ${{ vars.FTP_SERVER_DIR || 'public_html/' }}
+          exclude: |
+            **/.git*
+            **/.git*/**
+
+      - id: verify
+        name: Verify the live site
+        run: |
+          url="${{ steps.build.outputs.base-url }}"
+          for i in 1 2 3 4 5 6; do
+            live=$(curl -fsS "$url/build.json?nocache=$RANDOM" || true)
+            echo "$live" | grep -q "\"commit\":\"$GITHUB_SHA\"" && { echo "live: $live"; exit 0; }
+            sleep 10
+          done
+          echo "::error::$url does not show this build. Got: $live"
+          exit 1
+
+      - id: telegram
+        name: Send new posts to Telegram
+        if: github.event_name != 'workflow_dispatch' || inputs.telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ]; then echo "Telegram not configured; skipping"; exit 0; fi
+          python -m blogtools.telegram --base-url "${{ steps.build.outputs.base-url }}" --summary build/telegram-summary.json
+
+      - name: Save Telegram record
+        if: always() && steps.telegram.outcome != 'skipped'
+        run: |
+          git diff --quiet -- state/ && exit 0
+          git config user.name "blog-deploy"
+          git config user.email "blog-deploy@users.noreply.github.com"
+          git add state/telegram-sent.json
+          git commit -m "state: record Telegram posts [skip ci]"
+          git pull --rebase --autostash && git push
+
+      - name: Notify maintainer
+        if: always()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          NOTIFY_CHAT_ID: ${{ secrets.NOTIFY_CHAT_ID }}
+        run: |
+          stage=""
+          for s in "build:${{ steps.build.outcome }}" "deploy:${{ steps.deploy.outcome }}" \
+                   "verify:${{ steps.verify.outcome }}" "telegram:${{ steps.telegram.outcome }}"; do
+            [ "${s#*:}" = "failure" ] && { stage="${s%%:*}"; break; }
+          done
+          run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          if [ "${{ job.status }}" = "success" ]; then
+            # Stay quiet on scheduled runs that published nothing.
+            if [ "${{ github.event_name }}" = "schedule" ] && [ "$(cat build/telegram-summary.json 2>/dev/null || echo '[]')" = "[]" ]; then exit 0; fi
+            python -m blogtools.notify --status success --summary build/telegram-summary.json
+          else
+            python -m blogtools.notify --status failure --stage "${stage:-setup}" --run-url "$run_url"
+          fi

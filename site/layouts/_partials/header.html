@@ -1,0 +1,28 @@
+{{- $lang := site.Language.Lang }}
+<header class="site-header">
+  <nav class="nav wrap" aria-label="{{ T "home" }}">
+    <a class="logo" href="{{ site.Home.RelPermalink }}">{{ partial "site-title.html" . }}</a>
+    <ul class="menu">
+      {{- /* Menu items come from data/settings.yaml (admin panel). */}}
+      {{- range hugo.Data.settings.menu }}
+        {{- $external := hasPrefix .path "http" }}
+        {{- $url := cond $external .path (strings.TrimPrefix "/" .path | relLangURL) }}
+        {{- if and (not $external) (not (hasSuffix $url "/")) }}{{ $url = printf "%s/" $url }}{{ end }}
+      <li><a href="{{ $url }}"{{ if eq $.RelPermalink $url }} aria-current="page"{{ end }}{{ if $external }} rel="noopener"{{ end }}>{{ index . (printf "label_%s" $lang) }}</a></li>
+      {{- end }}
+    </ul>
+    <div class="nav-tools">
+      {{- $other := false }}
+      {{- range .Translations }}{{ $other = . }}{{ end }}
+      {{- if not $other }}
+        {{- range hugo.Sites }}{{ if ne .Language.Lang $lang }}{{ $other = .Home }}{{ end }}{{ end }}
+      {{- end }}
+      {{- with $other }}
+      <a class="tool lang-switch" href="{{ .RelPermalink }}" hreflang="{{ .Language.Lang }}" lang="{{ .Language.Lang }}" title="{{ .Language.Label }}">{{ partial "icon.html" "globe" }}<span>{{ .Language.Label }}</span></a>
+      {{- end }}
+      <button class="tool theme-toggle" type="button" aria-label="{{ T "toggleTheme" }}" title="{{ T "toggleTheme" }}">
+        <span class="when-light">{{ partial "icon.html" "moon" }}</span><span class="when-dark">{{ partial "icon.html" "sun" }}</span>
+      </button>
+    </div>
+  </nav>
+</header>

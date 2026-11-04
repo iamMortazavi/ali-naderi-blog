@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ali-naderi/blog/schema/post.schema.json",
+  "title": "Blog post properties",
+  "description": "Properties (front matter) of a note in the vault's posts/ folder. A note is published only when publish is true. tools/blogtools/schema.py validates every note against this file on each build.",
+  "type": "object",
+  "required": ["slug", "date", "publish"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 140,
+      "description": "Post title. Falls back to the note's file name."
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "description": "Stable identity of the post across languages and renames. A Persian post and its English translation share the same id. Defaults to slug. Never change it after publishing: Telegram records are keyed by it."
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "maxLength": 80,
+      "description": "Latin, lowercase web address part: /posts/<slug>/ (Persian) or /en/posts/<slug>/ (English). Fixed after publishing."
+    },
+    "lang": {
+      "type": "string",
+      "enum": ["fa", "en"],
+      "default": "fa",
+      "description": "Language of the note."
+    },
+    "date": {
+      "type": "string",
+      "format": "date-or-datetime",
+      "description": "Publish date, YYYY-MM-DD or YYYY-MM-DDTHH:MM, Tehran time. A future date schedules the post."
+    },
+    "updated": {
+      "type": "string",
+      "format": "date-or-datetime",
+      "description": "Date of the last meaningful edit. Shown on the page and used as dateModified."
+    },
+    "publish": {
+      "type": "boolean",
+      "description": "Only notes with publish: true are built. Everything else stays private."
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 300,
+      "description": "One or two sentences for search results, link previews and Telegram. 50 to 160 characters works best."
+    },
+    "tags": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1, "maxLength": 40},
+      "maxItems": 10,
+      "description": "Topic tags. Shown on the post, listed under /tags/, and sent to Telegram as hashtags."
+    },
+    "series": {
+      "type": "string",
+      "maxLength": 80,
+      "description": "Name of a multi-part series this post belongs to."
+    },
+    "cover": {
+      "type": "string",
+      "description": "Cover image: an attachment file name (for example cover.jpg) or an https:// address."
+    },
+    "cover_alt": {
+      "type": "string",
+      "maxLength": 200,
+      "description": "Text description of the cover image for screen readers and search engines."
+    },
+    "audio": {
+      "type": "string",
+      "description": "Podcast or audio file: an attachment file name or an https:// address. Shown as a player at the top of the post."
+    },
+    "video": {
+      "type": "string",
+      "pattern": "^https://",
+      "description": "Video address on YouTube or Aparat, or a direct .mp4 address."
+    },
+    "toc": {
+      "type": "boolean",
+      "default": true,
+      "description": "Show a table of contents when the post has at least three headings."
+    },
+    "telegram": {
+      "type": "boolean",
+      "default": true,
+      "description": "Send this post to the Telegram channel when it is first published."
+    },
+    "aliases": {
+      "not": {},
+      "description": "Not allowed: in Hugo, aliases creates redirect pages, which is not what Obsidian aliases mean. Remove it from published notes."
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,8 @@
+{{- /* Plain-text description for meta tags and cards (about 160 characters). */ -}}
+{{- $d := "" -}}
+{{- if .IsHome -}}
+  {{- $d = index hugo.Data.settings.author (printf "bio_%s" site.Language.Lang) -}}
+{{- else -}}
+  {{- $d = or .Description (.Summary | plainify) -}}
+{{- end -}}
+{{- return ($d | plainify | htmlUnescape | strings.TrimSpace | truncate 170) -}}

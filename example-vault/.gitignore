@@ -1,0 +1,6 @@
+# Obsidian files that differ per device or may hold tokens
+.obsidian/workspace*.json
+.obsidian/plugins/obsidian-git/data.json
+.obsidian/cache
+.trash/
+.DS_Store

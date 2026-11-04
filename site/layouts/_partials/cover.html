@@ -1,0 +1,17 @@
+{{- /* Post cover: responsive WebP, loaded eagerly because it is usually the largest element on screen. */ -}}
+{{- with .Params.cover }}
+  {{- $alt := .alt | default "" }}
+  {{- $res := "" }}
+  {{- if not (hasPrefix .image "http") }}{{ $res = $.Resources.Get .image }}{{ end }}
+  {{- if not $res }}
+<figure class="post-cover"><img src="{{ .image }}" alt="{{ $alt }}" fetchpriority="high" decoding="async"></figure>
+  {{- else if eq $res.MediaType.SubType "svg" }}
+<figure class="post-cover"><img src="{{ $res.RelPermalink }}" alt="{{ $alt }}"></figure>
+  {{- else }}
+    {{- $large := $res.Resize (printf "%dx webp" (int (math.Min $res.Width 1440))) }}
+    {{- $medium := $res.Resize (printf "%dx webp" (int (math.Min $res.Width 720))) }}
+<figure class="post-cover">
+  <img src="{{ $medium.RelPermalink }}" srcset="{{ $medium.RelPermalink }} {{ $medium.Width }}w, {{ $large.RelPermalink }} {{ $large.Width }}w" sizes="(max-width: 760px) 100vw, 720px" width="{{ $medium.Width }}" height="{{ $medium.Height }}" alt="{{ $alt }}" fetchpriority="high" decoding="async">
+</figure>
+  {{- end }}
+{{- end }}

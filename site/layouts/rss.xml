@@ -1,0 +1,32 @@
+{{- /* RSS for the home page, sections and tags. Full post text, so readers can read in their feed reader. */ -}}
+{{- $pages := .RegularPages -}}
+{{- if .IsHome -}}{{- $pages = where site.RegularPages "Section" "posts" -}}{{- end -}}
+{{- $pages = $pages.ByDate.Reverse | first 30 -}}
+{{- $site := partial "site-title.html" . -}}
+{{- $author := index hugo.Data.settings.author (printf "name_%s" site.Language.Lang) -}}
+{{- printf "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>" | safeHTML }}
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>{{ if .IsHome }}{{ $site }}{{ else }}{{ .Title }} | {{ $site }}{{ end }}</title>
+    <link>{{ .Permalink }}</link>
+    <description>{{ partial "description.html" site.Home }}</description>
+    <language>{{ site.Language.Locale | default site.Language.Lang }}</language>
+    <generator>Hugo</generator>
+    {{- with $pages }}<lastBuildDate>{{ (index . 0).Date.Format "Mon, 02 Jan 2006 15:04:05 -0700" }}</lastBuildDate>{{ end }}
+    {{- with .OutputFormats.Get "rss" }}
+    <atom:link href="{{ .Permalink }}" rel="self" type="application/rss+xml"/>
+    {{- end }}
+    {{- range $pages }}
+    <item>
+      <title>{{ .Title }}</title>
+      <link>{{ .Permalink }}</link>
+      <guid isPermaLink="true">{{ .Permalink }}</guid>
+      <pubDate>{{ .Date.Format "Mon, 02 Jan 2006 15:04:05 -0700" }}</pubDate>
+      {{- with $author }}<dc:creator>{{ . }}</dc:creator>{{ end }}
+      {{- range .Params.tags }}<category>{{ . }}</category>{{ end }}
+      <description>{{ partial "description.html" . }}</description>
+      <content:encoded xmlns:content="http://purl.org/rss/1.0/modules/content/">{{ printf "<![CDATA[%s]]>" .Content | safeHTML }}</content:encoded>
+    </item>
+    {{- end }}
+  </channel>
+</rss>

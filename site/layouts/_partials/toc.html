@@ -1,0 +1,6 @@
+{{- if and (ne .Params.toc false) (ge (len .Fragments.Headings) 1) (ge (len .Fragments.HeadingsMap) 3) }}
+<details class="toc" open>
+  <summary>{{ T "toc" }}</summary>
+  {{ .TableOfContents }}
+</details>
+{{- end }}

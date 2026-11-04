@@ -1,0 +1,15 @@
+{{ define "main" }}
+<div class="wrap">
+  <header class="list-header">
+    <h1>{{ .Title }}</h1>
+    <p class="list-count">{{ partial "digits.html" (T "postsCount" (len .RegularPages)) }}</p>
+  </header>
+  {{- $pager := .Paginate .RegularPages }}
+  <div class="post-list">
+    {{- range $pager.Pages }}
+    {{ partial "post-card.html" . }}
+    {{- end }}
+  </div>
+  {{ partial "pagination.html" . }}
+</div>
+{{ end }}

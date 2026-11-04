@@ -1,0 +1,72 @@
+{{- /*
+  schema.org structured data.
+  Home: WebSite (with search action) + Person. Posts: BlogPosting + BreadcrumbList. Other pages: WebPage + BreadcrumbList.
+*/ -}}
+{{- $p := .page -}}
+{{- $settings := hugo.Data.settings -}}
+{{- $lang := site.Language.Lang -}}
+{{- $person := dict
+  "@type" "Person"
+  "@id" (printf "%s#author" ("" | absLangURL))
+  "name" (index $settings.author (printf "name_%s" $lang))
+  "url" ("" | absLangURL)
+-}}
+{{- $sameAs := slice -}}
+{{- range $settings.social -}}{{- if hasPrefix .url "http" -}}{{- $sameAs = $sameAs | append .url -}}{{- end -}}{{- end -}}
+{{- with $sameAs -}}{{- $person = merge $person (dict "sameAs" .) -}}{{- end -}}
+
+{{- $graph := slice -}}
+{{- if $p.IsHome -}}
+  {{- $site := dict
+    "@type" "WebSite"
+    "@id" (printf "%s#website" $p.Permalink)
+    "url" $p.Permalink
+    "name" (partial "site-title.html" .)
+    "description" .desc
+    "inLanguage" (site.Language.Locale | default $lang)
+    "publisher" (dict "@id" (index $person "@id"))
+    "potentialAction" (dict
+      "@type" "SearchAction"
+      "target" (dict "@type" "EntryPoint" "urlTemplate" (printf "%s?q={search_term_string}" ("search/" | absLangURL)))
+      "query-input" "required name=search_term_string")
+  -}}
+  {{- $graph = $graph | append $site $person -}}
+{{- else -}}
+  {{- $crumbs := slice (dict "@type" "ListItem" "position" 1 "name" (T "home") "item" site.Home.Permalink) -}}
+  {{- if and $p.IsPage (eq $p.Section "posts") -}}
+    {{- $crumbs = $crumbs | append (dict "@type" "ListItem" "position" 2 "name" (T "posts") "item" $p.CurrentSection.Permalink) -}}
+  {{- end -}}
+  {{- $crumbs = $crumbs | append (dict "@type" "ListItem" "position" (add (len $crumbs) 1) "name" $p.Title "item" $p.Permalink) -}}
+  {{- $graph = $graph | append (dict "@type" "BreadcrumbList" "itemListElement" $crumbs) -}}
+
+  {{- if and $p.IsPage (eq $p.Section "posts") -}}
+    {{- $post := dict
+      "@type" "BlogPosting"
+      "@id" (printf "%s#post" $p.Permalink)
+      "mainEntityOfPage" $p.Permalink
+      "url" $p.Permalink
+      "headline" ($p.Title | truncate 110)
+      "description" .desc
+      "datePublished" ($p.Date.Format "2006-01-02T15:04:05Z07:00")
+      "dateModified" ($p.Lastmod.Format "2006-01-02T15:04:05Z07:00")
+      "inLanguage" (site.Language.Locale | default $lang)
+      "wordCount" $p.WordCount
+      "author" $person
+      "publisher" $person
+    -}}
+    {{- with .image.url -}}{{- $post = merge $post (dict "image" (slice .)) -}}{{- end -}}
+    {{- with $p.Params.tags -}}{{- $post = merge $post (dict "keywords" (delimit . ", ")) -}}{{- end -}}
+    {{- with $p.Params.series -}}{{- $post = merge $post (dict "isPartOf" (dict "@type" "CreativeWorkSeries" "name" (index . 0))) -}}{{- end -}}
+    {{- with $p.Params.audio -}}
+      {{- $src := cond (hasPrefix . "http") . (($p.Resources.Get .).Permalink) -}}
+      {{- $post = merge $post (dict "audio" (dict "@type" "AudioObject" "contentUrl" $src)) -}}
+    {{- end -}}
+    {{- range $p.Translations -}}
+      {{- $post = merge $post (dict "workTranslation" (dict "@id" (printf "%s#post" .Permalink))) -}}
+    {{- end -}}
+    {{- $graph = $graph | append $post -}}
+  {{- else -}}
+    {{- $graph = $graph | append (dict "@type" "WebPage" "url" $p.Permalink "name" $p.Title "description" .desc "inLanguage" (site.Language.Locale | default $lang)) -}}
+  {{- end -}}
+{{- end -}}
+<script type="application/ld+json">{{ dict "@context" "https://schema.org" "@graph" $graph | jsonify | safeJS }}</script>

@@ -1,0 +1,116 @@
+# Admin panel configuration (Sveltia CMS, also readable by Decap CMS).
+# The panel edits only this site repository: all settings in site/data/settings.yaml and the about pages.
+# Posts are written in Obsidian and live in the content repository; the panel never touches them.
+# backend.repo and site_url are filled in by the deploy workflows. Docs: docs/runbook.md → "Admin panel".
+
+backend:
+  name: github
+  repo: OWNER/REPO
+  branch: main
+  commit_messages:
+    update: "panel: update {{slug}}"
+
+media_folder: site/static/uploads
+public_folder: /uploads
+
+site_url: https://example.com
+locale: en
+
+collections:
+  - name: settings
+    label: Site settings / تنظیمات سایت
+    editor:
+      preview: false
+    files:
+      - name: settings
+        label: All settings / همه‌ی تنظیمات
+        file: site/data/settings.yaml
+        fields:
+          - name: site
+            label: Site / سایت
+            widget: object
+            fields:
+              - name: url
+                label: Site address / آدرس سایت
+                widget: string
+                hint: "Full address without a trailing slash, e.g. https://alinaderi.ir. Changing it moves canonical links and the sitemap; Telegram links already sent keep the old address."
+                pattern: ['^https?://[^/\s]+(/[^\s]*[^/\s])?$', "Must start with https:// and must not end with /"]
+              - { name: title_fa, label: Site title (Persian) / عنوان سایت فارسی, widget: string }
+              - { name: title_en, label: Site title (English) / عنوان سایت انگلیسی, widget: string }
+          - name: look
+            label: Look / ظاهر سایت
+            widget: select
+            hint: "paper: white cards like the reference site · ink: warm paper colour, no cards. Preview a look before switching by adding ?look=ink to any page address."
+            options:
+              - { label: "Paper / کاغذی", value: paper }
+              - { label: "Ink / جوهری", value: ink }
+            default: paper
+          - name: author
+            label: Author / نویسنده
+            widget: object
+            fields:
+              - { name: name_fa, label: Name (Persian) / نام فارسی, widget: string }
+              - { name: name_en, label: Name (English) / نام انگلیسی, widget: string }
+              - { name: bio_fa, label: Short bio (Persian) / معرفی کوتاه فارسی, widget: text, required: false }
+              - { name: bio_en, label: Short bio (English) / معرفی کوتاه انگلیسی, widget: text, required: false }
+          - name: menu
+            label: Top menu / منوی بالا
+            widget: list
+            summary: "{{label_fa}} · {{label_en}} → {{path}}"
+            fields:
+              - { name: label_fa, label: Label (Persian) / عنوان فارسی, widget: string }
+              - { name: label_en, label: Label (English) / عنوان انگلیسی, widget: string }
+              - name: path
+                label: Address / آدرس
+                widget: string
+                hint: "A page of this site such as /tags/, /archives/, /search/, /about/, /tags/podcast/ — or a full https:// link."
+          - name: social
+            label: Links / لینک‌ها
+            widget: list
+            summary: "{{name}}: {{url}}"
+            fields:
+              - name: name
+                label: Icon / آیکون
+                widget: select
+                options: [telegram, github, x, linkedin, instagram, youtube, email]
+              - { name: url, label: Address / آدرس, widget: string, hint: "https://… or mailto:…" }
+          - name: telegram
+            label: Telegram channel / کانال تلگرام
+            widget: object
+            fields:
+              - { name: channel, label: Channel link / لینک کانال, widget: string, required: false, hint: "https://t.me/…" }
+              - name: languages
+                label: Send new posts in / ارسال نوشته‌های جدید به زبان
+                widget: select
+                multiple: true
+                required: false
+                options:
+                  - { label: Persian / فارسی, value: fa }
+                  - { label: English / انگلیسی, value: en }
+              - { name: hashtags, label: Tags as hashtags / برچسب‌ها به‌صورت هشتگ, widget: boolean, default: true }
+              - { name: footer_fa, label: Footer line (Persian) / خط پایانی فارسی, widget: string, required: false }
+              - { name: footer_en, label: Footer line (English) / خط پایانی انگلیسی, widget: string, required: false }
+          - name: seo
+            label: Search engines / موتورهای جست‌وجو
+            widget: object
+            fields:
+              - { name: google_verification, label: Google Search Console code, widget: string, required: false, hint: "Only the content=\"…\" value of the HTML tag method." }
+              - { name: bing_verification, label: Bing Webmaster code, widget: string, required: false }
+
+  - name: pages
+    label: Pages / صفحه‌ها
+    files:
+      - name: about_fa
+        label: About (Persian) / درباره‌ی من
+        file: site/content/fa/about.md
+        fields:
+          - { name: title, label: Title / عنوان, widget: string }
+          - { name: description, label: Description / توضیح کوتاه, widget: string }
+          - { name: body, label: Text / متن, widget: markdown }
+      - name: about_en
+        label: About (English)
+        file: site/content/en/about.md
+        fields:
+          - { name: title, label: Title, widget: string }
+          - { name: description, label: Description, widget: string }
+          - { name: body, label: Text, widget: markdown }

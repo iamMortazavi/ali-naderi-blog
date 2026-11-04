@@ -1,0 +1,24 @@
+{{- /*
+  Images in posts: page-bundle images become responsive, lazy-loaded WebP with fixed dimensions (no layout shift).
+  Audio and video attachments (![](episode.mp3), ![[clip.mp4]]) become players. PDFs become links.
+*/ -}}
+{{- $u := urls.Parse .Destination -}}
+{{- $ext := path.Ext $u.Path | lower -}}
+{{- $res := "" -}}
+{{- if not $u.IsAbs -}}{{- $res = .PageInner.Resources.Get $u.Path -}}{{- end -}}
+{{- $src := .Destination -}}
+{{- with $res -}}{{- $src = .RelPermalink -}}{{- end -}}
+{{- if in (slice ".mp3" ".m4a" ".ogg" ".oga" ".wav") $ext -}}
+<audio class="inline-audio" controls preload="none" src="{{ $src }}"></audio>
+{{- else if in (slice ".mp4" ".webm") $ext -}}
+<video class="inline-video" controls preload="metadata" src="{{ $src }}"></video>
+{{- else if eq $ext ".pdf" -}}
+<a href="{{ $src }}">{{ .Text | default (path.Base $u.Path) }}</a>
+{{- else if and $res (not (in (slice "svg" "gif") $res.MediaType.SubType)) -}}
+  {{- $w := $res.Width -}}
+  {{- $small := $res.Resize (printf "%dx webp" (int (math.Min $w 480))) -}}
+  {{- $large := $res.Resize (printf "%dx webp" (int (math.Min $w 960))) -}}
+<img src="{{ $large.RelPermalink }}" srcset="{{ $small.RelPermalink }} {{ $small.Width }}w, {{ $large.RelPermalink }} {{ $large.Width }}w" sizes="(max-width: 760px) 100vw, 720px" width="{{ $large.Width }}" height="{{ $large.Height }}" alt="{{ .Text }}" loading="lazy" decoding="async"{{ with .Title }} title="{{ . }}"{{ end }}>
+{{- else -}}
+<img src="{{ $src }}" alt="{{ .Text }}" loading="lazy" decoding="async"{{ with .Title }} title="{{ . }}"{{ end }}>
+{{- end -}}

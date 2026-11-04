@@ -1,0 +1,24 @@
+# Markdown features. Matches what Obsidian supports; see tools/blogtools/obsidian.py for the rest.
+
+[goldmark.renderer]
+  # The friend's own notes are trusted; Obsidian users often write small bits of HTML.
+  unsafe = true
+[goldmark.extensions]
+  strikethrough = true
+  [goldmark.extensions.extras.mark]
+    enable = true          # ==highlight==
+  [goldmark.extensions.passthrough]
+    enable = true          # $math$ and $$math$$, rendered by _markup/render-passthrough.html
+    [goldmark.extensions.passthrough.delimiters]
+      block = [["$$", "$$"]]
+      inline = [["$", "$"]]
+[goldmark.parser]
+  autoHeadingIDType = "github"
+  [goldmark.parser.attribute]
+    block = true
+[highlight]
+  noClasses = false
+  lineNos = false
+[tableOfContents]
+  startLevel = 2
+  endLevel = 4

@@ -1,0 +1,10 @@
+User-agent: *
+{{- if eq hugo.Environment "production" }}
+Allow: /
+Disallow: /admin/
+
+Sitemap: {{ "sitemap.xml" | absURL }}
+{{- else }}
+# Staging copy: keep it out of search engines.
+Disallow: /
+{{- end }}

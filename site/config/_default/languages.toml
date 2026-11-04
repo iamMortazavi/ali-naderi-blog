@@ -1,0 +1,17 @@
+# Languages. Site titles and menus come from data/settings.yaml; the titles here are fallbacks.
+
+[fa]
+  weight = 1
+  contentDir = "content/fa"
+  locale = "fa-IR"
+  label = "فارسی"
+  direction = "rtl"
+  title = "وبلاگ"
+
+[en]
+  weight = 2
+  contentDir = "content/en"
+  locale = "en-US"
+  label = "English"
+  direction = "ltr"
+  title = "Blog"

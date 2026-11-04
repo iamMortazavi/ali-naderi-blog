@@ -1,0 +1,26 @@
+{{- /* Podcast audio and video named in the post properties. */ -}}
+{{- with .Params.audio }}
+  {{- $src := . }}
+  {{- $type := "" }}
+  {{- if not (hasPrefix . "http") }}{{ with $.Resources.Get . }}{{ $src = .RelPermalink }}{{ $type = .MediaType.Type }}{{ end }}{{ end }}
+<section class="media media-audio" aria-label="{{ T "listen" }}">
+  <p class="media-label">{{ partial "icon.html" "headphones" }} {{ T "listen" }}</p>
+  <audio controls preload="none" src="{{ $src }}"{{ with $type }} type="{{ . }}"{{ end }}></audio>
+</section>
+{{- end }}
+{{- with .Params.video }}
+  {{- $embed := "" }}
+  {{- with findRESubmatch `(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/shorts/)([\w-]{11})` . 1 }}
+    {{- $embed = printf "https://www.youtube-nocookie.com/embed/%s" (index (index . 0) 1) }}
+  {{- end }}
+  {{- with findRESubmatch `aparat\.com/v/([\w]+)` . 1 }}
+    {{- $embed = printf "https://www.aparat.com/video/video/embed/videohash/%s/vt/frame" (index (index . 0) 1) }}
+  {{- end }}
+<section class="media media-video" aria-label="{{ T "watch" }}">
+  {{- if $embed }}
+  <div class="video-frame"><iframe src="{{ $embed }}" title="{{ $.Title }}" loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
+  {{- else }}
+  <video controls preload="none" src="{{ . }}"></video>
+  {{- end }}
+</section>
+{{- end }}

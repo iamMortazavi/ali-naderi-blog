@@ -1,0 +1,19 @@
+{{ define "main" }}
+{{- $settings := hugo.Data.settings }}
+{{- $pager := .Paginate (where site.RegularPages "Section" "posts") }}
+<div class="wrap">
+  {{- if eq $pager.PageNumber 1 }}
+  <section class="profile">
+    <h1 class="profile-title">{{ partial "site-title.html" . }}</h1>
+    <p class="profile-bio">{{ index $settings.author (printf "bio_%s" site.Language.Lang) }}</p>
+    {{ partial "social.html" . }}
+  </section>
+  {{- end }}
+  <div class="post-list">
+    {{- range $pager.Pages }}
+    {{ partial "post-card.html" . }}
+    {{- end }}
+  </div>
+  {{ partial "pagination.html" . }}
+</div>
+{{ end }}
