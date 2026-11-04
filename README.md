@@ -1,61 +1,53 @@
-# Blog site
+# Ali Naderi Blog
 
-A bilingual (Persian/English) static blog. Posts are written in Obsidian, built with Hugo on GitHub Actions, uploaded to a cPanel host over FTPS, and announced once on a Telegram channel.
+A bilingual Persian/English blog for cPanel hosting: Laravel 13, a Filament 5 admin panel in Persian, MySQL, and posts written either in the panel or in Obsidian.
 
-Design and decisions: [docs/designs/bilingual-obsidian-blog.md](docs/designs/bilingual-obsidian-blog.md). Data model: [docs/content-model.md](docs/content-model.md). Operations: [docs/runbook.md](docs/runbook.md).
+- Persian (right-to-left, at `/`) and English (left-to-right, at `/en`), with translations linked to each other.
+- Two looks (paper, ink), each with light and dark mode, chosen in the panel.
+- Jalali dates, Persian digits, search that treats ي/ی and ك/ک alike.
+- Markdown with Obsidian features: callouts, `==highlight==`, math, footnotes, tables, highlighted code, wikilinks and embeds.
+- SEO: canonical and hreflang links, Open Graph and Twitter cards with 1200×630 images, schema.org JSON-LD (WebSite, Person, BlogPosting, BreadcrumbList), sitemap with language alternates, full-text RSS per language and tag, automatic 301 redirects when an address changes.
+- Telegram: each new post is sent to the channel once, in a fixed format.
+- Speed: public pages carry no cookies and are served from a whole-page cache; images are resized to WebP.
+
+Documents: [data model](docs/content-model.md) · [cPanel install guide (Persian)](docs/deploy-cpanel.fa.md) · [original design](docs/designs/bilingual-obsidian-blog.md)
 
 ## Layout
 
 ```
-.github/
-  actions/build-site/  shared build: tests → settings check → vault conversion → Hugo
-  workflows/           deploy.yml   production: cPanel over FTPS → verify → Telegram → notify
-                       pages.yml    staging: GitHub Pages, hidden from search engines
-                       ci.yml       pull requests
-.hugo-version          the one place the Hugo version is pinned
-.env.example           settings for make deploy (copy to .env)
-schema/                post.schema.json (rules for notes), settings.schema.json (rules for panel settings)
-tools/blogtools/       build_content.py (vault → Hugo), obsidian.py (link conversion), settings.py,
-                       telegram.py (channel posts, sent once), notify.py (maintainer alerts),
-                       dev.py (local preview), deploy.py (publish from this computer over FTPS)
-tools/tests/           unit tests and a full Hugo build test
-site/                  the Hugo project
-  config/_default/     hugo.toml, languages.toml, markup.toml, params.toml (maintainer only)
-  data/settings.yaml   everything the friend may change, edited from the admin panel
-  layouts/             own RTL/LTR theme: pages, _partials/, _markup/ (Obsidian callouts, math, images)
-  assets/              CSS (main + looks/paper, looks/ink), JS, default share image
-  static/admin/        admin panel (Sveltia CMS)
-  content/<lang>/      fixed pages; posts/ is generated and never committed
-state/                 telegram-sent.json: which posts were already sent to the channel
-example-vault/         a sample content repository: posts, attachments, template, guide, publish workflow
+app/
+  Models/                 Post, Tag, Series, Page, Setting, TelegramMessage, Redirect, SyncRun, User
+  Services/Content/       MarkdownRenderer (Markdown → HTML), ImageVariants (WebP and share images)
+  Services/Obsidian/      VaultSync (import), Note (property rules), LinkConverter, LocalVault, GitHubVault
+  Services/Telegram/      TelegramPublisher (send once, notices)
+  Support/                SiteSettings, Seo (meta + JSON-LD), Jalali, Persian, Locales, PageCache, Assets
+  Http/Controllers/Site/  public pages, feeds, sitemap
+  Filament/               admin panel: Resources (posts, pages, tags, series, users, redirects, sync runs),
+                          Pages/Settings, Widgets
+  Console/Commands/       blog:sync, blog:publish-due, blog:install
+resources/views/site/     public templates
+public/site/              CSS (main + looks), JS, font, math renderer
+routes/site.php           public addresses
+example-vault/            a sample Obsidian vault for trying the import
+scripts/package.sh        build the zip to upload to cPanel
 ```
 
 ## Local development
 
-Requires Hugo extended (version in `.hugo-version`) and Python 3.10+ with PyYAML.
+Needs PHP 8.3+, Composer and MySQL.
 
 ```bash
-make serve                         # live preview on http://localhost:1313, admin on /admin/; rebuilds when notes change
-make serve VAULT=../content-vault  # the real vault
-make test
-make deploy-check                  # build and show what would be uploaded
-make deploy                        # publish to cPanel over FTPS (settings in .env, see .env.example)
+composer install
+cp .env.example .env && php artisan key:generate
+php artisan migrate --seed
+php artisan blog:sync --path=example-vault
+php artisan serve
 ```
 
-The admin panel works locally without any login: open `http://localhost:1313/admin/` in Chrome or Edge, choose "Work with Local Repository" and select this folder. Changes are saved straight into `site/` and the preview reloads.
+- Site: `http://localhost:8000`
+- Admin panel: `http://localhost:8000/admin`. It signs in with `ADMIN_EMAIL` and `ADMIN_PASSWORD` from `.env` (set them before `migrate --seed`).
+- Preview a look on any page: add `?look=ink`.
 
-Preview the other look on any page by adding `?look=ink` to the address.
-
-## What is in v1
-
-- Persian (right-to-left, default, at `/`) and English (left-to-right, at `/en/`); translations linked by a shared `id`.
-- Jalali dates and Persian digits on Persian pages; Persian-aware search (ی/ي, ک/ك, half-spaces).
-- Code highlighting, math rendered to MathML at build time, Obsidian callouts, highlights, footnotes, tables.
-- Podcast audio and video (YouTube, Aparat, files) from note properties or embeds.
-- Responsive WebP images with fixed sizes; cover images cropped for link previews.
-- SEO: canonical, hreflang with x-default, Open Graph and Twitter cards, sitemap index, RSS per language and tag, robots.txt.
-- schema.org JSON-LD: WebSite with search action and Person on the home page; BlogPosting and BreadcrumbList on posts.
-- Two looks (paper, ink), each with light and dark mode; switched with one setting.
-- Admin panel (Sveltia CMS) for every setting: site address and titles, look, author, menu, links, Telegram format, search-engine verification codes, and the about pages. Settings are checked before each build.
-- Telegram channel posts, sent exactly once per post and language, only after the page is live.
-- Failure and success messages to a private Telegram chat.
+```bash
+php artisan test
+```

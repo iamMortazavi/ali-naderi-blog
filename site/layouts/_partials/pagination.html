@@ -1,8 +1,0 @@
-{{- $pager := .Paginator }}
-{{- if gt $pager.TotalPages 1 }}
-<nav class="pagination" aria-label="{{ T "page" }}">
-  {{- with $pager.Prev }}<a class="page-prev" href="{{ .URL }}" rel="prev">{{ T "newer" }}</a>{{ end }}
-  <span class="page-number">{{ partial "digits.html" (printf "%d / %d" $pager.PageNumber $pager.TotalPages) }}</span>
-  {{- with $pager.Next }}<a class="page-next" href="{{ .URL }}" rel="next">{{ T "older" }}</a>{{ end }}
-</nav>
-{{- end }}

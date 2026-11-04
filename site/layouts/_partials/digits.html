@@ -1,8 +1,0 @@
-{{- /* Returns the string with Persian digits when the current site is Persian. Usage: partial "digits.html" "12" */ -}}
-{{- $s := string . -}}
-{{- if eq site.Language.Lang "fa" -}}
-  {{- range $i, $d := slice "۰" "۱" "۲" "۳" "۴" "۵" "۶" "۷" "۸" "۹" -}}
-    {{- $s = replace $s (string $i) $d -}}
-  {{- end -}}
-{{- end -}}
-{{- return $s -}}

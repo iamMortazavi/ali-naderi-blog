@@ -1,3 +1,0 @@
-{{- /* Site title for the current language, from data/settings.yaml (admin panel). Usage: partial "site-title.html" . */ -}}
-{{- $t := index (hugo.Data.settings.site | default dict) (printf "title_%s" site.Language.Lang) | default site.Title -}}
-{{- return $t -}}

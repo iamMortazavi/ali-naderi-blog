@@ -3,6 +3,8 @@
 * **Author:** iammortazavi
 * **Date:** 2026-11-04
 
+> **Superseded (2026-11-04):** GitHub Actions is locked on the account, so the site was rebuilt as a Laravel + Filament application on cPanel (see the README and docs/content-model.md). This document records the original static-site design.
+
 ## Overview
 
 The requester wants to give a friend a blog in Persian (right-to-left) and English (left-to-right) that looks and works like aprd.ir. The friend already writes in Obsidian, should only need to write and do a few simple admin tasks, and should be able to change the site's look. Every new post should also go to the friend's Telegram channel in a fixed format. The requester will maintain the system alone after handing it over.
